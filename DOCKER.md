@@ -21,15 +21,15 @@ The `docker-compose.yml` file includes the following services:
 ### PostgreSQL
 - **Image**: postgres:16-alpine
 - **Port**: 5432 (mapped to host port 5432)
-- **Database**: signalflow
-- **User**: signalflow
-- **Password**: signalflow123
+- **Database**: signalflow (default, can be overridden with env var)
+- **User**: signalflow (default, can be overridden with env var)
+- **Password**: signalflow123 (default, can be overridden with env var)
 
 ### pgAdmin (Database Management UI)
-- **Image**: dpage/pgadmin4:latest
+- **Image**: dpage/pgadmin4:8.14
 - **Port**: 5050 (mapped to host port 5050)
-- **Email**: admin@signalflow.com
-- **Password**: admin
+- **Email**: admin@signalflow.com (default, can be overridden with env var)
+- **Password**: admin (default, can be overridden with env var)
 
 ## Quick Start
 

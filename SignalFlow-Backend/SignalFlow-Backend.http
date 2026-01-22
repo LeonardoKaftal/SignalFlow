@@ -1,0 +1,6 @@
+@SignalFlow_Backend_HostAddress = http://localhost:5287
+
+GET {{SignalFlow_Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

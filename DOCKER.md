@@ -7,6 +7,13 @@ This document describes how to use Docker Compose to run PostgreSQL for the Sign
 - Docker installed on your system
 - Docker Compose installed (usually comes with Docker Desktop)
 
+## Security Note
+
+⚠️ **Important**: The default credentials in this setup are for development purposes only. For production:
+1. Create a `.env` file from `.env.example`
+2. Change all passwords to strong, unique values
+3. Never commit your `.env` file to version control (it's already in `.gitignore`)
+
 ## Services
 
 The `docker-compose.yml` file includes the following services:

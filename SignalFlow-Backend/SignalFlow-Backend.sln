@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalFlow-Backend", "SignalFlow-Backend.csproj", "{DCCC08E1-531A-42B4-8535-E038D089FB3E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalFlow-Backend", "SignalFlow-Backend/SignalFlow-Backend.csproj", "{DCCC08E1-531A-42B4-8535-E038D089FB3E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A50ADB4F-0A63-4FB9-8720-97D1F32AAD10}"
 	ProjectSection(SolutionItems) = preProject

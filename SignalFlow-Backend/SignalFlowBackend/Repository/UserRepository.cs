@@ -4,9 +4,9 @@ using SignalFlowBackend.Entity;
 
 namespace SignalFlowBackend.Repository;
 
-public class UserRepository(UserDbContext context): IUserRepository
+public class UserRepository(AppDbContext context): IUserRepository
 {
-    public async Task<User?> FindUserByIdAsync(Guid id)
+    public async Task<User?> FindByIdAsync(Guid id)
     {
         return await context.Users.FindAsync(id);
     }
@@ -23,5 +23,11 @@ public class UserRepository(UserDbContext context): IUserRepository
         var found = await context.AddAsync(user);
         await context.SaveChangesAsync();
         return found.Entity;
+    }
+
+    public async Task UpdateUserAsync(User user)
+    {
+        context.Users.Update(user);
+        await context.SaveChangesAsync();
     }
 }

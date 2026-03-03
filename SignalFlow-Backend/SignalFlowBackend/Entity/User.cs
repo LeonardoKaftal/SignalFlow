@@ -13,5 +13,7 @@ public class User
     public required string Email { get; set; }
 
     public required string PasswordHash { get; set; }
-    public required DateTime RegistrationTime { get; set; }
+    public required DateTime RegistrationTime { get; init; }
+    public required string RefreshToken { get; set; }
+    public required DateTime RefreshTokenExpiryTime { get; set; }
 }

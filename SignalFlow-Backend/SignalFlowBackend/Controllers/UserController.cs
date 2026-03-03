@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Service;
@@ -11,16 +12,30 @@ public class UserController(IUserService userService): ControllerBase
    [HttpPost("/register")]
    public async Task<ActionResult<Guid>> RegisterUser([FromBody] UserRegisterRequestDto registerRequestDto)
    {
-      var id = await userService.RegisterAsync(registerRequestDto);
-      return id is null ? BadRequest("Email is invalid or username is already taken") : Ok(id);
+      var registered = await userService.RegisterAsync(registerRequestDto);
+      return registered is null ? BadRequest("Email is invalid or username is already taken") : Ok(registered);
    }
 
    [HttpPost("/login")]
-   public async Task<ActionResult<string>> LoginUser([FromBody] UserLoginRequest request)
+   public async Task<ActionResult<UserDto>> LoginUser([FromBody] UserLoginRequest request)
    {
       var found = await userService.LoginAsync(request);
       if (found is null) return Unauthorized("Invalid credentials");
-      const string token = "JWT";
-      return Ok(token);
+      return Ok(found);
+   }
+
+   [HttpPost("/refresh-token")] 
+   public async Task<ActionResult<UserDto>> LoginUserWithRefreshToken([FromBody] RefreshTokenRequest tokenRequest)
+   {
+      var found = await userService.LoginWithRefreshTokenAsync(tokenRequest);
+      if (found is null) return Unauthorized("Invalid credentials");
+      return Ok(found);
+   }
+   
+   [HttpGet("/test")]
+   [Authorize]
+   public ActionResult<string> ProtectedEndpoint()
+   {
+      return "test";
    }
 }

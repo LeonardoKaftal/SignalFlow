@@ -5,7 +5,8 @@ namespace SignalFlowBackend.Repository;
 public interface IUserRepository
 {
     
-    public Task<User?> FindUserByIdAsync(Guid id);
+    public Task<User?> FindByIdAsync(Guid id);
     public Task<User?> FindByUsernameAsync(string username);
     public Task<User?> SaveUserAsync(User user);
+    public Task UpdateUserAsync(User found);
 }

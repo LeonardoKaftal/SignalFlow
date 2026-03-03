@@ -11,7 +11,7 @@ using SignalFlowBackend.Data;
 
 namespace SignalFlowBackend.Migrations
 {
-    [DbContext(typeof(UserDbContext))]
+    [DbContext(typeof(AppDbContext))]
     [Migration("20260127015525_user-create")]
     partial class usercreate
     {

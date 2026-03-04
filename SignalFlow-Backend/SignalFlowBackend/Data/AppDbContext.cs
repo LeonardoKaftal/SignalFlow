@@ -6,4 +6,34 @@ namespace SignalFlowBackend.Data;
 public class AppDbContext(DbContextOptions options) : DbContext(options)
 {
     public DbSet<User> Users { get; set; }
+    public DbSet<Message> Messages { get; set; }
+    public DbSet<ConversationParticipant> Participants { get; set; }
+    public DbSet<ChatConversation> Conversations { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ConversationParticipant>()
+            .HasOne(cp => cp.User)
+            .WithMany()
+            .HasForeignKey(cp => cp.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ConversationParticipant>()
+            .HasOne(cp => cp.ChatConversation)
+            .WithMany(c => c.Participants)
+            .HasForeignKey(cp => cp.ConversationId)
+            .OnDelete(DeleteBehavior.Restrict); // ✅
+
+        modelBuilder.Entity<Message>()
+            .HasOne(m => m.Conversation)
+            .WithMany(c => c.Messages)
+            .HasForeignKey(m => m.ConversationId)
+            .OnDelete(DeleteBehavior.Restrict); // ✅
+
+        modelBuilder.Entity<Message>()
+            .HasOne(m => m.Sender)
+            .WithMany()
+            .HasForeignKey(m => m.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+    } 
 };

@@ -5,6 +5,6 @@ public record UserDto(
     string Email,
     string Username,
     string? Token,
-    string RefreshToken,
+    string? RefreshToken,
     DateTime RefreshTokenExpiryTime
 );

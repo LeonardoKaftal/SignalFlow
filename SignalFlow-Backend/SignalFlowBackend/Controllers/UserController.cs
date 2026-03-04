@@ -13,7 +13,7 @@ public class UserController(IUserService userService): ControllerBase
    public async Task<ActionResult<Guid>> RegisterUser([FromBody] UserRegisterRequestDto registerRequestDto)
    {
       var registered = await userService.RegisterAsync(registerRequestDto);
-      return registered is null ? BadRequest("Email is invalid or username is already taken") : Ok(registered);
+      return registered is null ? BadRequest("Email is invalid or username or email is already taken") : Ok(registered);
    }
 
    [HttpPost("/login")]

@@ -18,6 +18,13 @@ public class UserRepository(AppDbContext context): IUserRepository
             .FirstOrDefaultAsync(user => user.Username.Equals(username));
     }
 
+    public async Task<User?> FindByEmailAsync(string email)
+    {
+        return await context
+            .Users
+            .FirstOrDefaultAsync(user => user.Email.Equals(email));
+    }
+
     public async Task<User?> SaveUserAsync(User user)
     {
         var found = await context.AddAsync(user);

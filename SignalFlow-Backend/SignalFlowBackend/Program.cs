@@ -19,10 +19,20 @@ builder.Services.AddDbContext<AppDbContext>(option =>
         .UseSnakeCaseNamingConvention();
 });
 
-builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// services
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IConversationParticipantService, ConversationParticipantService>();
+builder.Services.AddScoped<IConversationService, ConversationService>();
+
+// repositories
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IConversationParticipantRepository, ConversationParticipantRepository>();
+builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

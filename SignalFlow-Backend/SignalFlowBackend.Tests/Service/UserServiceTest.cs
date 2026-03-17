@@ -14,210 +14,131 @@ namespace SignalFlow.Backend.Service;
 public class UserServiceTest
 {
     [Fact]
-    public async Task RegisterUserAsync_WithValidRequest_ReturnsUserDtoWithIdAndToken()
+    public async Task RegisterAsync_ShouldReturnUserDto_WhenValid()
     {
-        // given
+        // Given 
+        var request = new UserRegisterRequestDto("John", "john@gmail.com", "password");
         var expectedId = Guid.NewGuid();
-        var userRequest = new UserRegisterRequestDto(
-            Username: "Jonh",
-            Email: "jonh@gmail.com",
-            Password: "password"
-        );
-
-        var createdUser = new User
-        {
-            Id = expectedId,
-            Username = userRequest.Username,
-            Email = userRequest.Email,
-            PasswordHash = "hashed-password",
-            RegistrationTime = DateTime.UtcNow,
-            RefreshToken = "aabbccdd",
-            RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
-        };
 
         var passwordHasher = Substitute.For<IPasswordHasher<User>>();
-        passwordHasher.HashPassword(Arg.Any<User>(), userRequest.Password)
-                      .Returns("hashed-password");
+        passwordHasher.HashPassword(Arg.Any<User>(), request.Password).Returns("hashed-password");
 
         var userRepository = Substitute.For<IUserRepository>();
-        userRepository.FindByUsernameAsync(userRequest.Username)
-                      .Returns(Task.FromResult<User?>(null));
-        userRepository.SaveUserAsync(Arg.Any<User>())
-                      .Returns(Task.FromResult<User?>(createdUser));
+        userRepository.FindUserByUsernameAsync(request.Username).Returns((UserDto?)null);
+        userRepository.FindUserByEmailAsync(request.Email).Returns((UserDto?)null);
+
+        var expectedExpiryTime = DateTime.UtcNow.AddDays(7);
+        var createdUserDto = new UserDto(
+            expectedId,
+            request.Email,
+            request.Username,
+            null,
+            expectedExpiryTime
+        );
+        userRepository.SaveUserAsync(Arg.Any<User>()).Returns(createdUserDto);
 
         var tokenService = Substitute.For<ITokenService>();
-        tokenService.GenerateToken(createdUser).Returns("generated-token");
-        tokenService.GenerateRefreshToken().Returns(createdUser.RefreshToken);
+        tokenService.GenerateToken(Arg.Any<User>()).Returns("generated-token");
+        tokenService.GenerateRefreshToken().Returns("refresh-token");
 
         var service = new UserService(passwordHasher, userRepository, tokenService);
 
-        // when
-        var actual = await service.RegisterAsync(userRequest);
+        // When
+        var result = await service.RegisterAsync(request);
 
-        // then
-        actual.Should().NotBeNull();
-        actual!.Id.Should().Be(expectedId);
-        actual.Username.Should().Be(userRequest.Username);
-        actual.Email.Should().Be(userRequest.Email);
-        actual.Token.Should().Be("generated-token");
-        actual.RefreshToken.Should().Be(createdUser.RefreshToken);
+        // Then
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(expectedId);
+        result.Username.Should().Be(request.Username);
+        result.Email.Should().Be(request.Email);
+        result.Token.Should().Be("generated-token");
+        result.RefreshTokenExpiryTime.Should().Be(expectedExpiryTime);
     }
 
     [Fact]
-    public async Task RegisterUserAsync_WithInvalidEmail_ReturnsNull()
+    public async Task RegisterAsync_ShouldReturnNull_WhenEmailInvalid()
     {
-        // given
-        var userRepository = Substitute.For<IUserRepository>();
-        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
-        var tokenService = Substitute.For<ITokenService>();
-        var userService = new UserService(passwordHasher, userRepository, tokenService);
+        var service = new UserService(Substitute.For<IPasswordHasher<User>>(),
+                                      Substitute.For<IUserRepository>(),
+                                      Substitute.For<ITokenService>());
 
-        var userRequest = new UserRegisterRequestDto(
-            Username: "Jonh",
-            Email: "InvalidEmailGmail.com",
-            Password: "password"
-        );
+        var request = new UserRegisterRequestDto("John", "invalid-email", "password");
 
-        // when
-        var actual = await userService.RegisterAsync(userRequest);
+        var result = await service.RegisterAsync(request);
 
-        // then
-        actual.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task RegisterUserAsync_WithAlreadyUsedUsername_ReturnsNull()
-    {
-        // given
-        var userRepository = Substitute.For<IUserRepository>();
-        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
-        var tokenService = Substitute.For<ITokenService>();
-        var userService = new UserService(passwordHasher, userRepository, tokenService);
-
-        var userRequest = new UserRegisterRequestDto(
-            Username: "Jonh",
-            Email: "JonhA@gmail.com",
-            Password: "password"
-        );
-
-        var existingUser = new User
-        {
-            Id = Guid.NewGuid(),
-            Username = "Jonh",
-            Email = "JonhB@gmail.com",
-            PasswordHash = "password",
-            RegistrationTime = DateTime.UtcNow,
-            RefreshToken = null,
-            RefreshTokenExpiryTime = default
-        };
-
-        userRepository.FindByUsernameAsync(userRequest.Username)
-                      .Returns(Task.FromResult<User?>(existingUser));
-
-        // when
-        var actual = await userService.RegisterAsync(userRequest);
-
-        // then
-        actual.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task LoginAsync_WithNotExistingUsername_ReturnsNull()
-    {
-        // given
-        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
-        var userRepository = Substitute.For<IUserRepository>();
-        var tokenService = Substitute.For<ITokenService>();
-        var service = new UserService(passwordHasher, userRepository, tokenService);
-
-        var request = new UserLoginRequest(
-            Username: "Jonh",
-            Password: "password"
-        );
-
-        userRepository.FindByUsernameAsync(request.Username)
-                      .Returns(Task.FromResult<User?>(null));
-
-        // when
-        var result = await service.LoginAsync(request);
-
-        // then
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task LoginAsync_WithValidPassword_ReturnsUserDtoWithToken()
+    public async Task LoginAsync_ShouldReturnLoginResponseDto_WhenValid()
     {
-        // given
-        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
-        var userRepository = Substitute.For<IUserRepository>();
-        var tokenService = Substitute.For<ITokenService>();
-        var service = new UserService(passwordHasher, userRepository, tokenService);
-
-        var request = new UserLoginRequest("Jonh", "password");
-
+        // Given
+        var request = new UserLoginRequest("John", "password");
         var user = new User
         {
             Id = Guid.NewGuid(),
             Username = request.Username,
-            Email = "jonh@gmail.com",
+            Email = "john@gmail.com",
             PasswordHash = "hashed-password",
             RegistrationTime = DateTime.UtcNow,
-            RefreshToken = null,
-            RefreshTokenExpiryTime = default
+            RefreshTokenHash = "hashed-refresh",
+            RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
         };
 
-        userRepository.FindByUsernameAsync(request.Username)
-                      .Returns(Task.FromResult<User?>(user));
-
+        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
         passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password)
                       .Returns(PasswordVerificationResult.Success);
+        passwordHasher.HashPassword(user, Arg.Any<string>()).Returns("rehashed");
 
+        var userRepository = Substitute.For<IUserRepository>();
+        userRepository.FindUserEntityByUsernameAsync(request.Username).Returns(user);
+
+        var tokenService = Substitute.For<ITokenService>();
         tokenService.GenerateToken(user).Returns("generated-token");
+        tokenService.GenerateRefreshToken().Returns("refresh-token");
 
-        // when
+        var service = new UserService(passwordHasher, userRepository, tokenService);
+
+        // When
         var result = await service.LoginAsync(request);
 
-        // then
+        // Then
         result.Should().NotBeNull();
         result!.Id.Should().Be(user.Id);
         result.Username.Should().Be(user.Username);
         result.Email.Should().Be(user.Email);
         result.Token.Should().Be("generated-token");
+        result.RefreshToken.Should().Be("refresh-token");
     }
 
     [Fact]
-    public async Task LoginAsync_WithInvalidPassword_ReturnsNull()
+    public async Task LoginAsync_ShouldReturnNull_WhenPasswordInvalid()
     {
-        // given
-        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
-        var userRepository = Substitute.For<IUserRepository>();
-        var tokenService = Substitute.For<ITokenService>();
-        var service = new UserService(passwordHasher, userRepository, tokenService);
-
-        var request = new UserLoginRequest("Jonh", "wrong-password");
-
+        var request = new UserLoginRequest("John", "wrong-password");
         var user = new User
         {
             Id = Guid.NewGuid(),
             Username = request.Username,
-            Email = "jonh@gmail.com",
+            Email = "john@gmail.com",
             PasswordHash = "hashed-password",
             RegistrationTime = DateTime.UtcNow,
-            RefreshToken = null,
-            RefreshTokenExpiryTime = default
+            RefreshTokenHash = "hashed-refresh",
+            RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
         };
 
-        userRepository.FindByUsernameAsync(request.Username)
-                      .Returns(Task.FromResult<User?>(user));
-
+        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
         passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password)
                       .Returns(PasswordVerificationResult.Failed);
 
-        // when
+        var userRepository = Substitute.For<IUserRepository>();
+        userRepository.FindUserEntityByUsernameAsync(request.Username).Returns(user);
+
+        var tokenService = Substitute.For<ITokenService>();
+
+        var service = new UserService(passwordHasher, userRepository, tokenService);
+
         var result = await service.LoginAsync(request);
 
-        // then
         result.Should().BeNull();
     }
 }

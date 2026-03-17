@@ -1,40 +1,83 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using SignalFlowBackend.Data;
+using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
 
 namespace SignalFlowBackend.Repository;
 
-public class UserRepository(AppDbContext context): IUserRepository
+public class UserRepository(AppDbContext context) : IUserRepository
 {
-    public async Task<User?> FindByIdAsync(Guid id)
+    public async Task<User?> FindUserEntityByIdAsync(Guid id)
     {
         return await context.Users.FindAsync(id);
     }
-
-    public async Task<User?> FindByUsernameAsync(string username)
+    
+    public async Task<User?> FindUserEntityByUsernameAsync(string username)
     {
-        return await context
-            .Users
-            .FirstOrDefaultAsync(user => user.Username.Equals(username));
+        return await context.Users
+            .FirstOrDefaultAsync(u => u.Username == username);
     }
 
-    public async Task<User?> FindByEmailAsync(string email)
+    public async Task<UserDto?> FindUserByIdAsync(Guid id)
     {
-        return await context
-            .Users
-            .FirstOrDefaultAsync(user => user.Email.Equals(email));
+        return await context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == id)
+            .Select(MapUserToDto)
+            .FirstOrDefaultAsync();
     }
 
-    public async Task<User?> SaveUserAsync(User user)
+    public async Task<UserDto?> FindUserByUsernameAsync(string username)
     {
-        var found = await context.AddAsync(user);
+        return await context.Users
+            .AsNoTracking()
+            .Where(u => u.Username == username)
+            .Select(MapUserToDto)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<UserDto?> FindUserByEmailAsync(string email)
+    {
+        return await context.Users
+            .AsNoTracking()
+            .Where(u => u.Email == email)
+            .Select(MapUserToDto)
+            .FirstOrDefaultAsync();
+    }
+
+
+    public async Task<UserDto?> SaveUserAsync(User user)
+    {
+        var result = await context.Users.AddAsync(user);
         await context.SaveChangesAsync();
-        return found.Entity;
+        return MapUser(user);
     }
 
     public async Task UpdateUserAsync(User user)
     {
         context.Users.Update(user);
         await context.SaveChangesAsync();
+    }
+
+    private static readonly Expression<Func<User, UserDto>> MapUserToDto =
+        user => new UserDto(
+            Id: user.Id, 
+            Email: user.Email,
+            Username: user.Username,
+            Token: null,
+            RefreshTokenExpiryTime: user.RefreshTokenExpiryTime
+       );
+    
+    // same as MapUserToDto but as a method and not as expression
+    private static UserDto MapUser(User user)
+    {
+        return new UserDto(
+            Id: user.Id, 
+            Email: user.Email,
+            Username: user.Username,
+            Token: null,
+            RefreshTokenExpiryTime: user.RefreshTokenExpiryTime
+        ); 
     }
 }

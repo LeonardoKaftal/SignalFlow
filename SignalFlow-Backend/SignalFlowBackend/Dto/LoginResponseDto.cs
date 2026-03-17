@@ -1,9 +1,9 @@
 namespace SignalFlowBackend.Dto;
 
-public record UserDto(
+public record LoginResponseDto(
     Guid Id,
     string Email,
     string Username,
     string? Token,
-    DateTime? RefreshTokenExpiryTime
-);
+    DateTime? RefreshTokenExpiryTime,
+    string? RefreshToken);

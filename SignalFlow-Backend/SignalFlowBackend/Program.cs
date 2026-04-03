@@ -6,18 +6,22 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using SignalFlowBackend.Data;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Exceptions;
 using SignalFlowBackend.Repository;
 using SignalFlowBackend.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();  
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(option =>
 {
     option.UseNpgsql(builder.Configuration.GetConnectionString("defaultConnection"))
         .UseSnakeCaseNamingConvention();
 });
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -53,6 +57,7 @@ builder.Services
 var app = builder.Build();
 
 
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -65,4 +70,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+app.UseExceptionHandler();
 app.Run();

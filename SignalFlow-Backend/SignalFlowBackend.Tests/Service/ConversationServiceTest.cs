@@ -3,7 +3,9 @@ using JetBrains.Annotations;
 using NSubstitute;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Exceptions;
 using SignalFlowBackend.Repository;
+using SignalFlowBackend.Role;
 using SignalFlowBackend.Service;
 using Xunit;
 
@@ -23,7 +25,7 @@ public class ConversationServiceTest
         );
 
     private static readonly ConversationParticipantDto SampleParticipant =
-        new(Guid.NewGuid(), "alice", DateTime.UtcNow);
+        new(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, DateTime.UtcNow);
 
     // ── GetConversationByIdAsync ──────────────────────────────────────────────
 
@@ -200,6 +202,7 @@ public class ConversationServiceTest
         var before = DateTime.UtcNow;
         repository.SaveAsync(Arg.Any<ChatConversation>()).Returns(expected);
         participantService.SaveParticipantAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(SampleParticipant);
+        participantService.AddAdministratorToConversation(SampleParticipant.ConversationParticipantId, expected.ConversationId).Returns(true);
 
         // when
         var actual = await sut.CreateConversationAsync(ConversationName, userIds);
@@ -214,6 +217,7 @@ public class ConversationServiceTest
             c.CreatedAt <= after));
         await participantService.Received(1).SaveParticipantAsync(userId1, expected.ConversationId);
         await participantService.Received(1).SaveParticipantAsync(userId2, expected.ConversationId);
+        await participantService.Received(1).AddAdministratorToConversation(SampleParticipant.ConversationParticipantId, expected.ConversationId);
     }
 
     [Fact]
@@ -230,6 +234,7 @@ public class ConversationServiceTest
 
         repository.SaveAsync(Arg.Any<ChatConversation>()).Returns(expected);
         participantService.SaveParticipantAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(SampleParticipant);
+        participantService.AddAdministratorToConversation(SampleParticipant.ConversationParticipantId, expected.ConversationId).Returns(true);
 
         // when
         await sut.CreateConversationAsync(ConversationName, userIds);
@@ -239,7 +244,7 @@ public class ConversationServiceTest
     }
 
     [Fact]
-    public async Task CreateConversationAsync_ShouldRollbackAndReturnNull_WhenUserDoesNotExist()
+    public async Task CreateConversationAsync_ShouldRollbackAndThrowNotCreatedException_WhenUserDoesNotExist()
     {
         // given
         var userId1 = Guid.NewGuid();
@@ -256,10 +261,10 @@ public class ConversationServiceTest
             .Returns((ConversationParticipantDto?)null);
 
         // when
-        var actual = await sut.CreateConversationAsync(ConversationName, userIds);
+        Func<Task> act = async () => await sut.CreateConversationAsync(ConversationName, userIds);
 
         // then
-        actual.Should().BeNull();
+        await act.Should().ThrowAsync<NotCreatedException>();
         await repository.Received(1).DeleteAsync(savedConversation.ConversationId);
     }
 
@@ -305,17 +310,22 @@ public class ConversationServiceTest
     // ── DeleteConversationAsync ───────────────────────────────────────────────
 
     [Fact]
-    public async Task DeleteConversationAsync_ShouldReturnTrue_WhenConversationIsDeleted()
+    public async Task DeleteConversationAsync_ShouldReturnTrue_WhenRequesterIsAdminAndConversationIsDeleted()
     {
         // given
         var conversationId = Guid.NewGuid();
+        var requesterParticipantId = Guid.NewGuid();
         var repository = Substitute.For<IConversationRepository>();
-        var sut = BuildSut(repository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
+        participantService.GetAllParticipantsByConversationIdAsync(conversationId).Returns([
+            new ConversationParticipantDto(requesterParticipantId, "admin-user", ConversationParticipantRole.Admin, DateTime.UtcNow)
+        ]);
         repository.DeleteAsync(conversationId).Returns(true);
 
         // when
-        var actual = await sut.DeleteConversationAsync(conversationId);
+        var actual = await sut.DeleteConversationAsync(conversationId, requesterParticipantId);
 
         // then
         actual.Should().BeTrue();
@@ -323,21 +333,24 @@ public class ConversationServiceTest
     }
 
     [Fact]
-    public async Task DeleteConversationAsync_ShouldReturnFalse_WhenConversationDoesNotExist()
+    public async Task DeleteConversationAsync_ShouldReturnFalse_WhenRequesterIsNotAdmin()
     {
         // given
         var conversationId = Guid.NewGuid();
+        var requesterParticipantId = Guid.NewGuid();
         var repository = Substitute.For<IConversationRepository>();
-        var sut = BuildSut(repository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
-        repository.DeleteAsync(conversationId).Returns(false);
+        participantService.GetAllParticipantsByConversationIdAsync(conversationId).Returns([
+            new ConversationParticipantDto(requesterParticipantId, "regular-user", ConversationParticipantRole.Regular, DateTime.UtcNow)
+        ]);
 
         // when
-        var actual = await sut.DeleteConversationAsync(conversationId);
+        var actual = await sut.DeleteConversationAsync(conversationId, requesterParticipantId);
 
         // then
         actual.Should().BeFalse();
-        await repository.Received(1).DeleteAsync(conversationId);
+        await repository.DidNotReceive().DeleteAsync(Arg.Any<Guid>());
     }
 }
-

@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Identity;
 using NSubstitute;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Exceptions;
 using SignalFlowBackend.Repository;
+using SignalFlowBackend.Role;
 using SignalFlowBackend.Service;
 using Xunit;
 
@@ -41,7 +43,20 @@ public class UserServiceTest
         tokenService.GenerateToken(Arg.Any<User>()).Returns("generated-token");
         tokenService.GenerateRefreshToken().Returns("refresh-token");
 
-        var service = new UserService(passwordHasher, userRepository, tokenService);
+        var conversationService = Substitute.For<IConversationService>();
+        conversationService.GetOrCreateGlobalConversationAsync().Returns(new ChatConversationDto(
+            Guid.NewGuid(),
+            "Global",
+            true,
+            DateTime.UtcNow
+        ));
+
+        var participantService = Substitute.For<IConversationParticipantService>();
+        participantService
+            .SaveParticipantAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
+            .Returns(new ConversationParticipantDto(Guid.NewGuid(), "John", ConversationParticipantRole.Regular, DateTime.UtcNow));
+
+        var service = new UserService(passwordHasher, userRepository, tokenService, conversationService, participantService);
 
         // When
         var result = await service.RegisterAsync(request);
@@ -58,9 +73,15 @@ public class UserServiceTest
     [Fact]
     public async Task RegisterAsync_ShouldReturnNull_WhenEmailInvalid()
     {
+        // Given
+        var conversationService = Substitute.For<IConversationService>();
+        var participantService = Substitute.For<IConversationParticipantService>();
+
         var service = new UserService(Substitute.For<IPasswordHasher<User>>(),
                                       Substitute.For<IUserRepository>(),
-                                      Substitute.For<ITokenService>());
+                                      Substitute.For<ITokenService>(),
+                                      conversationService,
+                                      participantService);
 
         var request = new UserRegisterRequestDto("John", "invalid-email", "password");
 
@@ -97,7 +118,10 @@ public class UserServiceTest
         tokenService.GenerateToken(user).Returns("generated-token");
         tokenService.GenerateRefreshToken().Returns("refresh-token");
 
-        var service = new UserService(passwordHasher, userRepository, tokenService);
+        var conversationService = Substitute.For<IConversationService>();
+        var participantService = Substitute.For<IConversationParticipantService>();
+
+        var service = new UserService(passwordHasher, userRepository, tokenService, conversationService, participantService);
 
         // When
         var result = await service.LoginAsync(request);
@@ -135,10 +159,62 @@ public class UserServiceTest
 
         var tokenService = Substitute.For<ITokenService>();
 
-        var service = new UserService(passwordHasher, userRepository, tokenService);
+        var conversationService = Substitute.For<IConversationService>();
+        var participantService = Substitute.For<IConversationParticipantService>();
+
+        var service = new UserService(passwordHasher, userRepository, tokenService, conversationService, participantService);
 
         var result = await service.LoginAsync(request);
 
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RegisterAsync_ShouldRollbackAndThrow_WhenGlobalParticipantCreationFails()
+    {
+        // Given
+        var request = new UserRegisterRequestDto("John", "john@gmail.com", "password");
+        var expectedId = Guid.NewGuid();
+
+        var passwordHasher = Substitute.For<IPasswordHasher<User>>();
+        passwordHasher.HashPassword(Arg.Any<User>(), request.Password).Returns("hashed-password");
+        passwordHasher.HashPassword(Arg.Any<User>(), Arg.Any<string>()).Returns("hashed-refresh");
+
+        var userRepository = Substitute.For<IUserRepository>();
+        userRepository.FindUserByUsernameAsync(request.Username).Returns((UserDto?)null);
+        userRepository.FindUserByEmailAsync(request.Email).Returns((UserDto?)null);
+        userRepository.SaveUserAsync(Arg.Any<User>()).Returns(new UserDto(
+            expectedId,
+            request.Email,
+            request.Username,
+            null,
+            DateTime.UtcNow.AddDays(7)
+        ));
+
+        var tokenService = Substitute.For<ITokenService>();
+        tokenService.GenerateToken(Arg.Any<User>()).Returns("generated-token");
+        tokenService.GenerateRefreshToken().Returns("refresh-token");
+
+        var conversationService = Substitute.For<IConversationService>();
+        conversationService.GetOrCreateGlobalConversationAsync().Returns(new ChatConversationDto(
+            Guid.NewGuid(),
+            "Global",
+            true,
+            DateTime.UtcNow
+        ));
+
+        var participantService = Substitute.For<IConversationParticipantService>();
+        participantService
+            .SaveParticipantAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
+            .Returns((ConversationParticipantDto?)null);
+
+        var service = new UserService(passwordHasher, userRepository, tokenService, conversationService, participantService);
+
+        // When
+        Func<Task> act = async () => await service.RegisterAsync(request);
+
+        // Then
+        await act.Should().ThrowAsync<ChatNotFoundException>();
+        await userRepository.Received(1).DeleteUserAsync(Arg.Any<User>());
     }
 }

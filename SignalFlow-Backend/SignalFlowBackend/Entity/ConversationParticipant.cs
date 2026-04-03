@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SignalFlowBackend.Role;
 
 namespace SignalFlowBackend.Entity;
 
@@ -12,6 +13,6 @@ public class ConversationParticipant
     
     public Guid ConversationId { get; set; }
     public ChatConversation ChatConversation { get; set; }
-    
+    public ConversationParticipantRole Role { get; set; }
     public required DateTime LastAccess { get; set; }
 }

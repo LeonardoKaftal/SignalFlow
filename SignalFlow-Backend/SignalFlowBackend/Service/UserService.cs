@@ -2,6 +2,7 @@ using System.Net.Mail;
 using Microsoft.AspNetCore.Identity;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Exceptions;
 using SignalFlowBackend.Repository;
 
 namespace SignalFlowBackend.Service;
@@ -9,9 +10,17 @@ namespace SignalFlowBackend.Service;
 public class UserService(
     IPasswordHasher<User> hasher,
     IUserRepository userRepository,
-    ITokenService tokenService
+    ITokenService tokenService,
+    IConversationService conversationService,
+    IConversationParticipantService conversationParticipantService
+    
 ) : IUserService
 {
+
+    public async Task<User?> FindEntityByIdAsync(Guid id)
+    {
+        return await userRepository.FindUserEntityByIdAsync(id);
+    }
     
     public Task<UserDto?> FindByIdAsync(Guid id)
     {
@@ -58,7 +67,27 @@ public class UserService(
             return null;
 
         var token = tokenService.GenerateToken(user);
+        try
+        {
+            // Register the user in the global chat
+            var globalConversation = await conversationService.GetOrCreateGlobalConversationAsync();
 
+            if (globalConversation is null)
+                throw new ChatNotFoundException("INTERNAL SERVER ERROR: Global chat has not been found nor created, aborting registration");
+
+            var participant = await conversationParticipantService
+                .SaveParticipantAsync(user.Id, globalConversation.ConversationId);
+
+            if (participant is null)
+                throw new ChatNotFoundException("INTERNAL SERVER ERROR: Cannot register the user in global chat, aborting registration");
+        }
+        catch
+        {
+            await userRepository.DeleteUserAsync(user);
+            throw;
+        }
+        
+        // return the token
         return created with
         {
             Token = token

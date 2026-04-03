@@ -13,6 +13,28 @@ namespace SignalFlow.Backend.Service;
 [TestSubject(typeof(MessageService))]
 public class MessageServiceTest
 {
+    private static MessageService BuildSut(
+        IMessageRepository messageRepository,
+        IConversationParticipantRepository? participantRepository = null)
+    {
+        return new MessageService(
+            messageRepository,
+            participantRepository ?? Substitute.For<IConversationParticipantRepository>());
+    }
+
+    private static ConversationParticipant BuildParticipantEntity(Guid participantId, Guid conversationId)
+    {
+        return new ConversationParticipant
+        {
+            ConversationParticipantId = participantId,
+            ConversationId = conversationId,
+            UserId = Guid.NewGuid(),
+            User = null!,
+            ChatConversation = null!,
+            LastAccess = DateTime.UtcNow
+        };
+    }
+
 
     private static readonly Guid ConversationId = Guid.NewGuid();
     private static readonly Guid SenderId       = Guid.NewGuid();
@@ -65,7 +87,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.GetAllMessagesByConversationId(ConversationId)
             .Returns(new List<MessageDto> { SampleDto });
@@ -84,7 +106,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.GetAllMessagesByConversationId(ConversationId).ReturnsNull();
 
@@ -100,7 +122,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.GetAllMessagesByConversationId(ConversationId)
             .Returns(new List<MessageDto>());
@@ -118,7 +140,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.GetAllMessagesByConversationId(ConversationId)
             .Returns(new List<MessageDto> { SampleDto });
@@ -140,7 +162,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.GetMessageById(MessageId).Returns(SampleDto);
 
@@ -157,7 +179,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.GetMessageById(MessageId).Returns((MessageDto?)null);
 
@@ -175,7 +197,12 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var participantRepository = Substitute.For<IConversationParticipantRepository>();
+        var sut = BuildSut(repository, participantRepository);
+
+        participantRepository
+            .GetParticipantEntityByIdAsync(SampleDto.SenderId)
+            .Returns(BuildParticipantEntity(SampleDto.SenderId, SampleDto.ConversationId));
 
         repository.Save(Arg.Any<Message>()).Returns(SampleDto);
 
@@ -192,7 +219,12 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var participantRepository = Substitute.For<IConversationParticipantRepository>();
+        var sut = BuildSut(repository, participantRepository);
+
+        participantRepository
+            .GetParticipantEntityByIdAsync(SampleDto.SenderId)
+            .Returns(BuildParticipantEntity(SampleDto.SenderId, SampleDto.ConversationId));
 
         repository.Save(Arg.Any<Message>()).Returns(SampleDto);
 
@@ -208,7 +240,8 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var participantRepository = Substitute.For<IConversationParticipantRepository>();
+        var sut = BuildSut(repository, participantRepository);
 
         var dtoWithEmptyId = SampleDto with { MessageId = Guid.Empty };
 
@@ -219,6 +252,10 @@ public class MessageServiceTest
                 return new MessageDto(msg.MessageId, msg.ConversationId, msg.SenderId, msg.SentTime, msg.Content);
             });
 
+        participantRepository
+            .GetParticipantEntityByIdAsync(dtoWithEmptyId.SenderId)
+            .Returns(BuildParticipantEntity(dtoWithEmptyId.SenderId, dtoWithEmptyId.ConversationId));
+
         // when
         var actual = await sut.SaveMessage(dtoWithEmptyId);
 
@@ -228,6 +265,44 @@ public class MessageServiceTest
         actual.MessageId.Should().Be(Guid.Empty);
     }
 
+    [Fact]
+    public async Task SaveMessage_ShouldReturnNull_WhenSenderDoesNotExist()
+    {
+        // given
+        var repository = Substitute.For<IMessageRepository>();
+        var participantRepository = Substitute.For<IConversationParticipantRepository>();
+        var sut = BuildSut(repository, participantRepository);
+
+        participantRepository.GetParticipantEntityByIdAsync(SampleDto.SenderId).Returns((ConversationParticipant?)null);
+
+        // when
+        var actual = await sut.SaveMessage(SampleDto);
+
+        // then
+        actual.Should().BeNull();
+        await repository.DidNotReceive().Save(Arg.Any<Message>());
+    }
+
+    [Fact]
+    public async Task SaveMessage_ShouldReturnNull_WhenSenderIsNotPartOfConversation()
+    {
+        // given
+        var repository = Substitute.For<IMessageRepository>();
+        var participantRepository = Substitute.For<IConversationParticipantRepository>();
+        var sut = BuildSut(repository, participantRepository);
+
+        participantRepository
+            .GetParticipantEntityByIdAsync(SampleDto.SenderId)
+            .Returns(BuildParticipantEntity(SampleDto.SenderId, Guid.NewGuid()));
+
+        // when
+        var actual = await sut.SaveMessage(SampleDto);
+
+        // then
+        actual.Should().BeNull();
+        await repository.DidNotReceive().Save(Arg.Any<Message>());
+    }
+
     // ── DeleteMessage ─────────────────────────────────────────────────────────
 
     [Fact]
@@ -235,7 +310,7 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.Delete(MessageId).Returns(true);
 
@@ -253,7 +328,7 @@ public class MessageServiceTest
         // given
         var messageId = Guid.NewGuid();
         var repository = Substitute.For<IMessageRepository>();
-        var sut = new MessageService(repository);
+        var sut = BuildSut(repository);
 
         repository.Delete(messageId).Returns(false);
 

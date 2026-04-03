@@ -1,6 +1,8 @@
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Exceptions;
 using SignalFlowBackend.Repository;
+using SignalFlowBackend.Role;
 
 namespace SignalFlowBackend.Service;
 
@@ -37,15 +39,26 @@ public class ConversationService(
 
         return conversationRepository.GetConversationsByNameAndUserIdAsync(name.Trim(), userId);
     }
-
-    public Task<bool> DeleteConversationAsync(Guid conversationId)
+    
+    public async Task<bool> DeleteConversationAsync(Guid conversationId, Guid requesterParticipantId)
     {
-        return conversationRepository.DeleteAsync(conversationId);
-    }
+        var participants = (await conversationParticipantService
+            .GetAllParticipantsByConversationIdAsync(conversationId)).ToList();
 
-    public async Task<ChatConversationDto?> CreateConversationAsync(string name, IEnumerable<Guid> userIds)
+        var found = participants
+            .FirstOrDefault(participant => participant.ConversationParticipantId == requesterParticipantId);
+        
+        // only an admin may delete a conversation
+        if (found is null || found.Role != ConversationParticipantRole.Admin)
+            return false;
+
+        return await conversationRepository.DeleteAsync(conversationId);
+    }  
+
+    // userIds is the list of the chat participant to create and add to the conversation
+    public async Task<ChatConversationDto?> CreateConversationAsync(string name, IEnumerable<Guid>? userIds)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(name) || userIds is null)
             return null;
 
         var normalizedName = name.Trim();
@@ -73,14 +86,37 @@ public class ConversationService(
         if (savedConversation is null)
             return null;
 
+        var adminUserId = userIdList.First();
+        var adminParticipantId = Guid.Empty;
+
         foreach (var userId in userIdList)
         {
-            var participant = await conversationParticipantService.SaveParticipantAsync(userId, savedConversation.ConversationId);
+            var participant = await conversationParticipantService
+                .SaveParticipantAsync(userId, savedConversation.ConversationId);
+
             if (participant is null)
             {
                 await conversationRepository.DeleteAsync(savedConversation.ConversationId);
-                return null;
+                throw new NotCreatedException("INTERNAL SERVER ERROR: couldn't create the conversation because a participant could not be saved");
             }
+
+            if (userId == adminUserId)
+                adminParticipantId = participant.ConversationParticipantId;
+        }
+
+        if (adminParticipantId == Guid.Empty)
+        {
+            await conversationRepository.DeleteAsync(savedConversation.ConversationId);
+            throw new NotCreatedException("INTERNAL SERVER ERROR: admin participant not found during conversation creation");
+        }
+
+        var success = await conversationParticipantService
+            .AddAdministratorToConversation(adminParticipantId, savedConversation.ConversationId);
+
+        if (!success)
+        {
+            await conversationRepository.DeleteAsync(savedConversation.ConversationId);
+            throw new NotCreatedException("INTERNAL SERVER ERROR: couldn't create the conversation because making the creator admin failed");
         }
 
         return savedConversation;
@@ -101,5 +137,7 @@ public class ConversationService(
 
         return await conversationRepository.SaveAsync(conversation);
     }
+
+    
 }
 

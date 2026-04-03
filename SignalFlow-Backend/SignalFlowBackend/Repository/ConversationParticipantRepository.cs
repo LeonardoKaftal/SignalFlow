@@ -47,7 +47,11 @@ public class ConversationParticipantRepository(AppDbContext context)
     {
         context.Participants.Update(participant);
         await context.SaveChangesAsync();
-        return MapParticipant(participant);
+        return await context.Participants
+            .AsNoTracking()
+            .Where(p => p.ConversationParticipantId == participant.ConversationParticipantId)
+            .Select(MapParticipantToDto)
+            .FirstAsync();
     }
 
     public async Task<bool> DeleteAsync(Guid conversationParticipantId)
@@ -66,16 +70,7 @@ public class ConversationParticipantRepository(AppDbContext context)
         p => new ConversationParticipantDto(
             ConversationParticipantId: p.ConversationParticipantId,
             Username: p.User.Username,
+            Role: p.Role,
             LastAccess: p.LastAccess
         );
-    
-    // same as MapParticipantToDto but as a method and not as expression 
-    private static ConversationParticipantDto MapParticipant(ConversationParticipant p)
-    {
-       return  new ConversationParticipantDto(
-           ConversationParticipantId: p.ConversationParticipantId,
-           Username: p.User.Username,
-           LastAccess: p.LastAccess
-       );
-    }
 }

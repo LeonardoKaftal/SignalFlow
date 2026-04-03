@@ -5,6 +5,7 @@ namespace SignalFlowBackend.Service;
 
 public interface IUserService
 {
+    public Task<User?> FindEntityByIdAsync(Guid id);
     public Task<UserDto?> FindByIdAsync(Guid id);
     public Task<UserDto?> FindByUsernameAsync(string username);
     public Task<UserDto?> RegisterAsync(UserRegisterRequestDto request);

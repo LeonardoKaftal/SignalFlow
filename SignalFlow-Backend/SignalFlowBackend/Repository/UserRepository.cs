@@ -60,6 +60,14 @@ public class UserRepository(AppDbContext context) : IUserRepository
         await context.SaveChangesAsync();
     }
 
+    public async Task<UserDto?> DeleteUserAsync(User user)
+    {
+        context.Users.Remove(user);
+        await context.SaveChangesAsync();
+
+        return MapUser(user);
+    }
+
     private static readonly Expression<Func<User, UserDto>> MapUserToDto =
         user => new UserDto(
             Id: user.Id, 

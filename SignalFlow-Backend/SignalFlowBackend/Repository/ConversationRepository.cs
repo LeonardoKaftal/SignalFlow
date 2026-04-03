@@ -8,9 +8,6 @@ namespace SignalFlowBackend.Repository;
 
 public class ConversationRepository(AppDbContext context) : IConversationRepository
 {
-    
-    // User id is used for  
-    
     public async Task<ChatConversation?> GetConversationEntityByIdAsync(Guid conversationId)
     {
         return await context.Conversations.FindAsync(conversationId);
@@ -93,14 +90,42 @@ public class ConversationRepository(AppDbContext context) : IConversationReposit
 
     public async Task<bool> DeleteAsync(Guid conversationId)
     {
-        var conversation = await context.Conversations.FindAsync(conversationId);
+        var exists = await context.Conversations
+            .AsNoTracking()
+            .AnyAsync(conversation => conversation.ConversationId == conversationId);
 
-        if (conversation is null)
+        if (!exists)
             return false;
 
-        context.Conversations.Remove(conversation);
-        await context.SaveChangesAsync();
-        return true;
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            await context.Messages
+                .Where(message => message.ConversationId == conversationId)
+                .ExecuteDeleteAsync();
+
+            await context.Participants
+                .Where(participant => participant.ConversationId == conversationId)
+                .ExecuteDeleteAsync();
+
+            var deletedConversations = await context.Conversations
+                .Where(conversation => conversation.ConversationId == conversationId)
+                .ExecuteDeleteAsync();
+
+            if (deletedConversations == 0)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     private static readonly Expression<Func<ChatConversation, ChatConversationDto>> MapConversationToDto =

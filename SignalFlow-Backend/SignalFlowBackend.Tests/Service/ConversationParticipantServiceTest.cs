@@ -4,6 +4,7 @@ using NSubstitute;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
 using SignalFlowBackend.Repository;
+using SignalFlowBackend.Role;
 using SignalFlowBackend.Service;
 using Xunit;
 
@@ -17,7 +18,7 @@ public class ConversationParticipantServiceTest
     {
         // given
         var participantId = Guid.NewGuid();
-        var expected = new ConversationParticipantDto(participantId, "alice", DateTime.UtcNow);
+        var expected = new ConversationParticipantDto(participantId, "alice", ConversationParticipantRole.Regular, DateTime.UtcNow);
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var sut = new ConversationParticipantService(repository, userRepository);
@@ -38,8 +39,8 @@ public class ConversationParticipantServiceTest
         var conversationId = Guid.NewGuid();
         var expected = new List<ConversationParticipantDto>
         {
-            new(Guid.NewGuid(), "alice", DateTime.UtcNow),
-            new(Guid.NewGuid(), "bob", DateTime.UtcNow)
+            new(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, DateTime.UtcNow),
+            new(Guid.NewGuid(), "bob", ConversationParticipantRole.Regular, DateTime.UtcNow)
         };
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
@@ -60,7 +61,7 @@ public class ConversationParticipantServiceTest
         // given
         var userId = Guid.NewGuid();
         var conversationId = Guid.NewGuid();
-        var existingParticipant = new ConversationParticipantDto(Guid.NewGuid(), "alice", DateTime.UtcNow);
+        var existingParticipant = new ConversationParticipantDto(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, DateTime.UtcNow);
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var sut = new ConversationParticipantService(repository, userRepository);
@@ -113,7 +114,7 @@ public class ConversationParticipantServiceTest
             RefreshTokenHash = "refresh-hash",
             RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
         };
-        var expected = new ConversationParticipantDto(Guid.NewGuid(), user.Username, DateTime.UtcNow);
+        var expected = new ConversationParticipantDto(Guid.NewGuid(), user.Username, ConversationParticipantRole.Regular, DateTime.UtcNow);
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var sut = new ConversationParticipantService(repository, userRepository);
@@ -142,14 +143,23 @@ public class ConversationParticipantServiceTest
     {
         // given
         var participantId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var participant = new ConversationParticipant
+        {
+            ConversationParticipantId = participantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Admin,
+            LastAccess = DateTime.UtcNow
+        };
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var sut = new ConversationParticipantService(repository, userRepository);
 
+        repository.GetParticipantEntityByIdAsync(participantId).Returns(participant);
         repository.DeleteAsync(participantId).Returns(true);
 
         // when
-        var actual = await sut.DeleteParticipantAsync(participantId);
+        var actual = await sut.DeleteParticipantAsync(participantId, conversationId);
 
         // then
         actual.Should().BeTrue();
@@ -161,18 +171,157 @@ public class ConversationParticipantServiceTest
     {
         // given
         var participantId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var sut = new ConversationParticipantService(repository, userRepository);
 
-        repository.DeleteAsync(participantId).Returns(false);
+        repository.GetParticipantEntityByIdAsync(participantId).Returns((ConversationParticipant?)null);
 
         // when
-        var actual = await sut.DeleteParticipantAsync(participantId);
+        var actual = await sut.DeleteParticipantAsync(participantId, conversationId);
 
         // then
         actual.Should().BeFalse();
-        await repository.Received(1).DeleteAsync(participantId);
+        await repository.DidNotReceive().DeleteAsync(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task SaveParticipantAsync_ShouldReturnNull_WhenRequesterIsNotAdmin()
+    {
+        // given
+        var requesterParticipantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var repository = Substitute.For<IConversationParticipantRepository>();
+        var userRepository = Substitute.For<IUserRepository>();
+        var sut = new ConversationParticipantService(repository, userRepository);
+
+        repository.GetParticipantEntityByIdAsync(requesterParticipantId).Returns(new ConversationParticipant
+        {
+            ConversationParticipantId = requesterParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        });
+
+        // when
+        var actual = await sut.SaveParticipantAsync(userId, conversationId, requesterParticipantId);
+
+        // then
+        actual.Should().BeNull();
+        await repository.DidNotReceive().SaveAsync(Arg.Any<ConversationParticipant>());
+    }
+
+    [Fact]
+    public async Task DeleteParticipantAsync_ShouldReturnFalse_WhenRequesterIsNotAdmin()
+    {
+        // given
+        var requesterParticipantId = Guid.NewGuid();
+        var targetParticipantId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var repository = Substitute.For<IConversationParticipantRepository>();
+        var userRepository = Substitute.For<IUserRepository>();
+        var sut = new ConversationParticipantService(repository, userRepository);
+
+        repository.GetParticipantEntityByIdAsync(targetParticipantId).Returns(new ConversationParticipant
+        {
+            ConversationParticipantId = targetParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        });
+
+        repository.GetParticipantEntityByIdAsync(requesterParticipantId).Returns(new ConversationParticipant
+        {
+            ConversationParticipantId = requesterParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        });
+
+        // when
+        var actual = await sut.DeleteParticipantAsync(targetParticipantId, conversationId, requesterParticipantId);
+
+        // then
+        actual.Should().BeFalse();
+        await repository.DidNotReceive().DeleteAsync(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task AddAdministratorToConversation_ShouldReturnFalse_WhenRequesterIsNotAdmin()
+    {
+        // given
+        var requesterParticipantId = Guid.NewGuid();
+        var targetParticipantId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var repository = Substitute.For<IConversationParticipantRepository>();
+        var userRepository = Substitute.For<IUserRepository>();
+        var sut = new ConversationParticipantService(repository, userRepository);
+
+        var target = new ConversationParticipant
+        {
+            ConversationParticipantId = targetParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        };
+
+        repository.GetParticipantEntityByIdAsync(targetParticipantId).Returns(target);
+        repository.GetParticipantEntityByIdAsync(requesterParticipantId).Returns(new ConversationParticipant
+        {
+            ConversationParticipantId = requesterParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        });
+
+        // when
+        var actual = await sut.AddAdministratorToConversation(targetParticipantId, conversationId, requesterParticipantId);
+
+        // then
+        actual.Should().BeFalse();
+        target.Role.Should().Be(ConversationParticipantRole.Regular);
+        await repository.DidNotReceive().SaveAsync(Arg.Any<ConversationParticipant>());
+    }
+
+    [Fact]
+    public async Task AddAdministratorToConversation_ShouldReturnTrueAndPromote_WhenRequesterIsAdmin()
+    {
+        // given
+        var requesterParticipantId = Guid.NewGuid();
+        var targetParticipantId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var repository = Substitute.For<IConversationParticipantRepository>();
+        var userRepository = Substitute.For<IUserRepository>();
+        var sut = new ConversationParticipantService(repository, userRepository);
+
+        var target = new ConversationParticipant
+        {
+            ConversationParticipantId = targetParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        };
+
+        repository.GetParticipantEntityByIdAsync(targetParticipantId).Returns(target);
+        repository.GetParticipantEntityByIdAsync(requesterParticipantId).Returns(new ConversationParticipant
+        {
+            ConversationParticipantId = requesterParticipantId,
+            ConversationId = conversationId,
+            Role = ConversationParticipantRole.Admin,
+            LastAccess = DateTime.UtcNow
+        });
+        repository.SaveAsync(Arg.Any<ConversationParticipant>())
+            .Returns(new ConversationParticipantDto(targetParticipantId, "target", ConversationParticipantRole.Admin, DateTime.UtcNow));
+
+        // when
+        var actual = await sut.AddAdministratorToConversation(targetParticipantId, conversationId, requesterParticipantId);
+
+        // then
+        actual.Should().BeTrue();
+        target.Role.Should().Be(ConversationParticipantRole.Admin);
+        await repository.Received(1).SaveAsync(target);
     }
 }
 

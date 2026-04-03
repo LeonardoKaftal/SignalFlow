@@ -66,6 +66,10 @@ namespace SignalFlowBackend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_access");
 
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");

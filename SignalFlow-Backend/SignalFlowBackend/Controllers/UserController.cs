@@ -31,11 +31,4 @@ public class UserController(IUserService userService): ControllerBase
       if (found is null) return Unauthorized("Invalid credentials");
       return Ok(found);
    }
-   
-   [HttpGet("/test")]
-   [Authorize]
-   public ActionResult<string> ProtectedEndpoint()
-   {
-      return "test";
-   }
 }

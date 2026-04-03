@@ -4,7 +4,9 @@ using SignalFlowBackend.Repository;
 
 namespace SignalFlowBackend.Service;
 
-public class MessageService(IMessageRepository messageRepository) : IMessageService
+public class MessageService(
+    IMessageRepository messageRepository,
+    IConversationParticipantRepository conversationParticipantRepository) : IMessageService
 {
     public async Task<IEnumerable<MessageDto>?> GetAllMessagesByConversationId(Guid conversationId)
     {
@@ -25,12 +27,19 @@ public class MessageService(IMessageRepository messageRepository) : IMessageServ
 
     public async Task<MessageDto?> SaveMessage(MessageDto toSave)
     {
+        if (toSave.ConversationId == Guid.Empty || toSave.SenderId == Guid.Empty || string.IsNullOrWhiteSpace(toSave.Content))
+            return null;
+
+        var sender = await conversationParticipantRepository.GetParticipantEntityByIdAsync(toSave.SenderId);
+        if (sender is null || sender.ConversationId != toSave.ConversationId)
+            return null;
+
         var message = new Message
         {
             ConversationId = toSave.ConversationId,
             SenderId = toSave.SenderId,
             SentTime = DateTime.UtcNow,
-            Content = toSave.Content
+            Content = toSave.Content.Trim()
         };
 
         return await messageRepository.Save(message);

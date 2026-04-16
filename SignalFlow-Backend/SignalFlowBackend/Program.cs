@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using SignalFlowBackend.Data;
 using SignalFlowBackend.Entity;
 using SignalFlowBackend.Exceptions;
+using SignalFlowBackend.Hub;
 using SignalFlowBackend.Repository;
 using SignalFlowBackend.Service;
 
@@ -14,6 +15,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevPolicy", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(_ => true)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); 
+    });
+});
+
 builder.Services.AddDbContext<AppDbContext>(option =>
 {
     option.UseNpgsql(builder.Configuration.GetConnectionString("defaultConnection"))
@@ -24,6 +38,7 @@ builder.Services.AddProblemDetails();
 
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddSignalR();
 
 // services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -52,6 +67,21 @@ builder.Services
             ValidAudience  = builder.Configuration["Audience"],
             ValidIssuer = builder.Configuration["Issuer"],
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 var app = builder.Build();
@@ -65,10 +95,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("DevPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.UseExceptionHandler();
 app.Run();

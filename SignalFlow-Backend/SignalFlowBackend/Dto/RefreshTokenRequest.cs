@@ -1,3 +1,3 @@
 namespace SignalFlowBackend.Dto;
 
-public record RefreshTokenRequest(Guid Id, string Token);
+public record RefreshTokenRequest(Guid Id);

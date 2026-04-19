@@ -34,7 +34,7 @@ public class UserService(
     }
 
     
-    public async Task<UserDto?> RegisterAsync(UserRegisterRequestDto request)
+    public async Task<LoginResponseDto?> RegisterAsync(UserRegisterRequestDto request)
     {
         if (!MailAddress.TryCreate(request.Email, out _))
             return null;
@@ -87,11 +87,14 @@ public class UserService(
             throw;
         }
         
-        // return the token
-        return created with
-        {
-            Token = token
-        };
+        return new LoginResponseDto(
+            Id: created.Id,
+            Email: created.Email,
+            Username: created.Username,
+            Token: token,
+            RefreshTokenExpiryTime: created.RefreshTokenExpiryTime,
+            RefreshToken: refreshToken
+        );
     }
 
     
@@ -139,9 +142,10 @@ public class UserService(
 
     
     public async Task<LoginResponseDto?> LoginWithRefreshTokenAsync(
-        RefreshTokenRequest request)
+        Guid userId,
+        string refreshToken)
     {
-        var user = await userRepository.FindUserEntityByIdAsync(request.Id);
+        var user = await userRepository.FindUserEntityByIdAsync(userId);
 
         if (user is null)
             return null;
@@ -152,7 +156,7 @@ public class UserService(
         var verification = hasher.VerifyHashedPassword(
             user,
             user.RefreshTokenHash,
-            request.Token
+            refreshToken
         );
 
         if (verification == PasswordVerificationResult.Failed)

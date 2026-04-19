@@ -74,7 +74,7 @@ public class UserServiceIntegrationTest(IntegrationTestWebAppFactory factory) : 
 
         // then
         found.Should().NotBeNull();
-        found!.Id.Should().Be(created.Id);
+        found.Id.Should().Be(created.Id);
         found.Username.Should().Be(request.Username);
         found.Email.Should().Be(request.Email);
     }
@@ -95,7 +95,7 @@ public class UserServiceIntegrationTest(IntegrationTestWebAppFactory factory) : 
 
         // then
         found.Should().NotBeNull();
-        found!.Username.Should().Be(request.Username);
+        found.Username.Should().Be(request.Username);
         found.Email.Should().Be(request.Email);
     }
 
@@ -117,7 +117,7 @@ public class UserServiceIntegrationTest(IntegrationTestWebAppFactory factory) : 
 
         // then
         result.Should().NotBeNull();
-        result!.Username.Should().Be(request.Username);
+        result.Username.Should().Be(request.Username);
         result.Email.Should().Be(request.Email);
         result.Token.Should().NotBeNullOrWhiteSpace();
         result.RefreshToken.Should().NotBeNullOrWhiteSpace();
@@ -157,14 +157,12 @@ public class UserServiceIntegrationTest(IntegrationTestWebAppFactory factory) : 
         var loginResult = await userService.LoginAsync(new UserLoginRequest(registerRequest.Username, registerRequest.Password));
         Assert.NotNull(loginResult);
 
-        var refreshRequest = new RefreshTokenRequest(loginResult.Id, loginResult.RefreshToken!);
-
         // when
-        var refreshed = await userService.LoginWithRefreshTokenAsync(refreshRequest);
+        var refreshed = await userService.LoginWithRefreshTokenAsync(loginResult.Id, loginResult.RefreshToken!);
 
         // then
         refreshed.Should().NotBeNull();
-        refreshed!.Id.Should().Be(loginResult.Id);
+        refreshed.Id.Should().Be(loginResult.Id);
         refreshed.Token.Should().NotBeNullOrWhiteSpace();
         refreshed.RefreshToken.Should().NotBeNullOrWhiteSpace();
         refreshed.RefreshToken.Should().NotBe(loginResult.RefreshToken);
@@ -192,10 +190,8 @@ public class UserServiceIntegrationTest(IntegrationTestWebAppFactory factory) : 
         dbContext.Users.Update(userEntity);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var refreshRequest = new RefreshTokenRequest(loginResult.Id, loginResult.RefreshToken!);
-
         // when
-        var refreshed = await userService.LoginWithRefreshTokenAsync(refreshRequest);
+        var refreshed = await userService.LoginWithRefreshTokenAsync(loginResult.Id, loginResult.RefreshToken!);
 
         // then
         refreshed.Should().BeNull();

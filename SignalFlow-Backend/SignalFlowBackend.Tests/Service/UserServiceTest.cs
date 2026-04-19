@@ -30,6 +30,7 @@ public class UserServiceTest
         userRepository.FindUserByEmailAsync(request.Email).Returns((UserDto?)null);
 
         var expectedExpiryTime = DateTime.UtcNow.AddDays(7);
+        var expectedRefreshToken = "refresh-token";
         var createdUserDto = new UserDto(
             expectedId,
             request.Email,
@@ -63,11 +64,12 @@ public class UserServiceTest
 
         // Then
         result.Should().NotBeNull();
-        result!.Id.Should().Be(expectedId);
+        result.Id.Should().Be(expectedId);
         result.Username.Should().Be(request.Username);
         result.Email.Should().Be(request.Email);
         result.Token.Should().Be("generated-token");
         result.RefreshTokenExpiryTime.Should().Be(expectedExpiryTime);
+        result.RefreshToken.Should().Be(expectedRefreshToken);
     }
 
     [Fact]
@@ -128,7 +130,7 @@ public class UserServiceTest
 
         // Then
         result.Should().NotBeNull();
-        result!.Id.Should().Be(user.Id);
+        result.Id.Should().Be(user.Id);
         result.Username.Should().Be(user.Username);
         result.Email.Should().Be(user.Email);
         result.Token.Should().Be("generated-token");

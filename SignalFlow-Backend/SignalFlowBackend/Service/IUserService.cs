@@ -8,7 +8,7 @@ public interface IUserService
     public Task<User?> FindEntityByIdAsync(Guid id);
     public Task<UserDto?> FindByIdAsync(Guid id);
     public Task<UserDto?> FindByUsernameAsync(string username);
-    public Task<UserDto?> RegisterAsync(UserRegisterRequestDto request);
+    public Task<LoginResponseDto?> RegisterAsync(UserRegisterRequestDto request);
     public Task<LoginResponseDto?> LoginAsync(UserLoginRequest registerRequest);
-    public Task<LoginResponseDto?> LoginWithRefreshTokenAsync(RefreshTokenRequest tokenRequest);
+    public Task<LoginResponseDto?> LoginWithRefreshTokenAsync(Guid userId, string refreshToken);
 }

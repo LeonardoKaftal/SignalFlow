@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SignalFlowBackend.Dto;
 
 public record LoginResponseDto(
@@ -6,4 +8,4 @@ public record LoginResponseDto(
     string Username,
     string? Token,
     DateTime? RefreshTokenExpiryTime,
-    string? RefreshToken);
+    [property: JsonIgnore] string? RefreshToken);

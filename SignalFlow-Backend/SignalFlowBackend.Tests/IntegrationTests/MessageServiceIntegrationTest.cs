@@ -73,7 +73,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
         await dbContext.Participants.AddAsync(participant, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var toSave = new MessageDto(Guid.Empty, conversation.ConversationId, participant.ConversationParticipantId, DateTime.MinValue, "Integration message");
+        var toSave = new MessageDto(Guid.Empty, conversation.ConversationId, participant.ConversationParticipantId, user.Username, DateTime.MinValue, "Integration message");
 
         // when
         var result = await service.SaveMessage(toSave);
@@ -108,7 +108,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Intentionally wrong: this is a UserId, not a ConversationParticipantId.
-        var toSave = new MessageDto(Guid.Empty, conversation.ConversationId, user.Id, DateTime.MinValue, "Integration message");
+        var toSave = new MessageDto(Guid.Empty, conversation.ConversationId, user.Id, user.Username, DateTime.MinValue, "Integration message");
 
         // when
         var result = await service.SaveMessage(toSave);

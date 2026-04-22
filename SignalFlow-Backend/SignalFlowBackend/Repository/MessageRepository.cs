@@ -62,9 +62,9 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
     public async Task<MessageDto?> Save(Message message)
     {
-        var result = await context.Messages.AddAsync(message);
+        await context.Messages.AddAsync(message);
         await context.SaveChangesAsync();
-        return MapMessage(result.Entity);
+        return await GetMessageById(message.MessageId);
     }
 
     public async Task<bool> Delete(Guid messageId)
@@ -86,7 +86,7 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
         message.Content = newContent;
         await context.SaveChangesAsync();
-        return MapMessage(message);
+        return await GetMessageById(messageId);
     }
 
     public async Task<MessageDto?> GetLatestMessageByConversationId(Guid conversationId)
@@ -105,18 +105,7 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
             MessageId: message.MessageId,
             ConversationId: message.ConversationId,
             SenderId: message.SenderId,
+            Username: message.Sender.User.Username,
             SentTime: message.SentTime,
             Content: message.Content);
-   
-    // same as MapMessageToDto but as a method and not as expression
-    private static MessageDto MapMessage(Message message)
-    {
-        return new MessageDto(
-            message.MessageId,
-            message.ConversationId,
-            message.SenderId,
-            message.SentTime,
-            message.Content);
-    }
-    
 }

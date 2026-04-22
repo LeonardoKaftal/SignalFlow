@@ -77,7 +77,7 @@ public class MessageServiceTest
     };
 
     private static readonly MessageDto SampleDto = new(
-        MessageId, ConversationId, SenderId, SampleMessage.SentTime, "Hello!"
+        MessageId, ConversationId, SenderId, "alice", SampleMessage.SentTime, "Hello!"
     );
 
     // ── GetAllMessagesByConversationId ────────────────────────────────────────
@@ -249,7 +249,7 @@ public class MessageServiceTest
             .Returns(callInfo => 
             {
                 var msg = callInfo.Arg<Message>();
-                return new MessageDto(msg.MessageId, msg.ConversationId, msg.SenderId, msg.SentTime, msg.Content);
+                return new MessageDto(msg.MessageId, msg.ConversationId, msg.SenderId, "alice", msg.SentTime, msg.Content);
             });
 
         participantRepository

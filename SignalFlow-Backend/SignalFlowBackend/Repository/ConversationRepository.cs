@@ -33,7 +33,6 @@ public class ConversationRepository(AppDbContext context) : IConversationReposit
             .FirstOrDefaultAsync();
     }
 
-    // given a name and a list of userIds, return the conversation if it exists where every user is a participant of this chat conversation, otherwise return null
     public async Task<ChatConversationDto?> GetConversationByNameAndUserIdsAsync(string name, IEnumerable<Guid> userIds)
     {
         var distinctUserIds = userIds.Distinct().ToList();
@@ -63,13 +62,13 @@ public class ConversationRepository(AppDbContext context) : IConversationReposit
     {
         return await context.Conversations
             .AsNoTracking()
-            .Where(conversation => conversation.Name == name && conversation.Participants.Any(participant => participant.UserId == userId))
+            .Where(conversation =>
+                conversation.Name == name &&
+                conversation.Participants.Any(participant => participant.UserId == userId))
             .OrderByDescending(conversation => conversation.CreatedAt)
             .Select(MapConversationToDto)
             .ToListAsync();
     }
-    
-    
 
     public async Task<ChatConversationDto?> GetGlobalConversationAsync()
     {
@@ -83,9 +82,9 @@ public class ConversationRepository(AppDbContext context) : IConversationReposit
 
     public async Task<ChatConversationDto?> SaveAsync(ChatConversation conversation)
     {
-        var result = await context.Conversations.AddAsync(conversation);
+        await context.Conversations.AddAsync(conversation);
         await context.SaveChangesAsync();
-        return MapConversation(result.Entity);
+        return await GetConversationByIdAsync(conversation.ConversationId);
     }
 
     public async Task<bool> DeleteAsync(Guid conversationId)
@@ -135,15 +134,4 @@ public class ConversationRepository(AppDbContext context) : IConversationReposit
             IsGlobal: conversation.IsGlobal,
             CreatedAt: conversation.CreatedAt
         );
-
-    private static ChatConversationDto MapConversation(ChatConversation conversation)
-    {
-        return new ChatConversationDto(
-            ConversationId: conversation.ConversationId,
-            Name: conversation.Name,
-            IsGlobal: conversation.IsGlobal,
-            CreatedAt: conversation.CreatedAt
-        );
-    }
 }
-

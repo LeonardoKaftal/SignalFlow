@@ -12,7 +12,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
     {
         return await context.Users.FindAsync(id);
     }
-    
+
     public async Task<User?> FindUserEntityByUsernameAsync(string username)
     {
         return await context.Users
@@ -46,12 +46,11 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .FirstOrDefaultAsync();
     }
 
-
     public async Task<UserDto?> SaveUserAsync(User user)
     {
-        var result = await context.Users.AddAsync(user);
+        await context.Users.AddAsync(user);
         await context.SaveChangesAsync();
-        return MapUser(user);
+        return await FindUserByIdAsync(user.Id);
     }
 
     public async Task UpdateUserAsync(User user)
@@ -62,30 +61,18 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<UserDto?> DeleteUserAsync(User user)
     {
+        var dto = await FindUserByIdAsync(user.Id);
         context.Users.Remove(user);
         await context.SaveChangesAsync();
-
-        return MapUser(user);
+        return dto;
     }
 
     private static readonly Expression<Func<User, UserDto>> MapUserToDto =
         user => new UserDto(
-            Id: user.Id, 
+            Id: user.Id,
             Email: user.Email,
             Username: user.Username,
             Token: null,
             RefreshTokenExpiryTime: user.RefreshTokenExpiryTime
-       );
-    
-    // same as MapUserToDto but as a method and not as expression
-    private static UserDto MapUser(User user)
-    {
-        return new UserDto(
-            Id: user.Id, 
-            Email: user.Email,
-            Username: user.Username,
-            Token: null,
-            RefreshTokenExpiryTime: user.RefreshTokenExpiryTime
-        ); 
-    }
+        );
 }

@@ -27,10 +27,10 @@ public class MessageService(
 
     public async Task<MessageDto?> SaveMessage(MessageDto toSave)
     {
-        if (toSave.ConversationId == Guid.Empty || toSave.SenderId == Guid.Empty || string.IsNullOrWhiteSpace(toSave.Content))
+        if (toSave.ConversationId == Guid.Empty || toSave.SenderId is null || string.IsNullOrWhiteSpace(toSave.Content))
             return null;
 
-        var sender = await conversationParticipantRepository.GetParticipantEntityByIdAsync(toSave.SenderId);
+        var sender = await conversationParticipantRepository.GetParticipantEntityByIdAsync((Guid)toSave.SenderId);
         if (sender is null || sender.ConversationId != toSave.ConversationId)
             return null;
 

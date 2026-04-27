@@ -109,8 +109,9 @@ public class MessageController(
 
         return Ok(messages);
     }
-
-    [HttpPost]
+    
+    // sending and receiving message is handled by SignalR hub, useful for testing
+    /*[HttpPost]
     public async Task<ActionResult<MessageDto>> SaveMessage([FromBody] MessageDto messageDto)
     {
         var currentUserId = GetCurrentUserId();
@@ -131,7 +132,7 @@ public class MessageController(
         }
 
         return CreatedAtAction(nameof(GetMessageById), new { messageId = saved.MessageId }, saved);
-    }
+    }*/
 
     [HttpPatch("{messageId:guid}")]
     public async Task<ActionResult<MessageDto>> UpdateMessage(Guid messageId, [FromBody] string newContent)

@@ -105,7 +105,7 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
             MessageId: message.MessageId,
             ConversationId: message.ConversationId,
             SenderId: message.SenderId,
-            Username: message.Sender.User.Username,
+            Username: message.Sender !=  null ? message.Sender.User.Username : "DELETED_USER",
             SentTime: message.SentTime,
             Content: message.Content);
 }

@@ -201,8 +201,8 @@ public class MessageServiceTest
         var sut = BuildSut(repository, participantRepository);
 
         participantRepository
-            .GetParticipantEntityByIdAsync(SampleDto.SenderId)
-            .Returns(BuildParticipantEntity(SampleDto.SenderId, SampleDto.ConversationId));
+            .GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!)
+            .Returns(BuildParticipantEntity((Guid)SampleDto.SenderId!, SampleDto.ConversationId));
 
         repository.Save(Arg.Any<Message>()).Returns(SampleDto);
 
@@ -223,8 +223,8 @@ public class MessageServiceTest
         var sut = BuildSut(repository, participantRepository);
 
         participantRepository
-            .GetParticipantEntityByIdAsync(SampleDto.SenderId)
-            .Returns(BuildParticipantEntity(SampleDto.SenderId, SampleDto.ConversationId));
+            .GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!)
+            .Returns(BuildParticipantEntity((Guid)SampleDto.SenderId!, SampleDto.ConversationId));
 
         repository.Save(Arg.Any<Message>()).Returns(SampleDto);
 
@@ -253,8 +253,8 @@ public class MessageServiceTest
             });
 
         participantRepository
-            .GetParticipantEntityByIdAsync(dtoWithEmptyId.SenderId)
-            .Returns(BuildParticipantEntity(dtoWithEmptyId.SenderId, dtoWithEmptyId.ConversationId));
+            .GetParticipantEntityByIdAsync((Guid)dtoWithEmptyId.SenderId!)
+            .Returns(BuildParticipantEntity((Guid)dtoWithEmptyId.SenderId!, dtoWithEmptyId.ConversationId));
 
         // when
         var actual = await sut.SaveMessage(dtoWithEmptyId);
@@ -273,7 +273,7 @@ public class MessageServiceTest
         var participantRepository = Substitute.For<IConversationParticipantRepository>();
         var sut = BuildSut(repository, participantRepository);
 
-        participantRepository.GetParticipantEntityByIdAsync(SampleDto.SenderId).Returns((ConversationParticipant?)null);
+        participantRepository.GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!).Returns((ConversationParticipant?)null);
 
         // when
         var actual = await sut.SaveMessage(SampleDto);
@@ -292,8 +292,8 @@ public class MessageServiceTest
         var sut = BuildSut(repository, participantRepository);
 
         participantRepository
-            .GetParticipantEntityByIdAsync(SampleDto.SenderId)
-            .Returns(BuildParticipantEntity(SampleDto.SenderId, Guid.NewGuid()));
+            .GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!)
+            .Returns(BuildParticipantEntity((Guid)SampleDto.SenderId!, Guid.NewGuid()));
 
         // when
         var actual = await sut.SaveMessage(SampleDto);

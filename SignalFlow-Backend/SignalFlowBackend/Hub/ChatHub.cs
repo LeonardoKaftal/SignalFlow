@@ -66,4 +66,11 @@ public sealed class ChatHub(
 
         return true;
     }
+
+    public async Task ExitConversation(Guid conversationId)
+    {
+        UserConversations.Remove(conversationId);
+        await Groups
+            .RemoveFromGroupAsync(Context.ConnectionId, conversationId.ToString());
+    }
 }

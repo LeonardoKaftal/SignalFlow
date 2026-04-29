@@ -84,7 +84,7 @@ public class ConversationParticipantService(
         if (participantFound is null || participantFound.ConversationId != conversationId)
             return false;
 
-        if (requesterParticipantId is not null)
+        if (requesterParticipantId is not null && requesterParticipantId != conversationParticipantId)
         {
             var requesterIsAdmin = await IsRequesterAdminAsync(requesterParticipantId.Value, conversationId);
             if (!requesterIsAdmin)

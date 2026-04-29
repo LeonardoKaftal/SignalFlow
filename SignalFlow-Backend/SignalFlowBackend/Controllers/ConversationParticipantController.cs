@@ -3,13 +3,17 @@ using Microsoft.AspNetCore.Mvc;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Service;
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
+using SignalFlowBackend.Hub;
 
 namespace SignalFlowBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
 [Authorize]
-public class ConversationParticipantController(IConversationParticipantService conversationParticipantService) : ControllerBase
+public class ConversationParticipantController(
+    IConversationParticipantService conversationParticipantService,
+    IHubContext<ChatHub> hubContext) : ControllerBase
 {
     private Guid? GetCurrentUserId()
      {
@@ -127,7 +131,15 @@ public class ConversationParticipantController(IConversationParticipantService c
         var deleted = await conversationParticipantService
             .DeleteParticipantAsync(participantId, conversationId, requesterParticipant.ConversationParticipantId);
 
-        return deleted ? NoContent() : StatusCode(403, "Only admins can remove participants or participant was not found");
+        if (!deleted) 
+            return StatusCode(403, "Only admins can remove participants or participant was not found");
+
+        
+        await hubContext.Clients
+            .Group(conversationId.ToString())
+            .SendAsync("ParticipantRemoved", participantId);
+        
+        return NoContent();
     }
 }
 

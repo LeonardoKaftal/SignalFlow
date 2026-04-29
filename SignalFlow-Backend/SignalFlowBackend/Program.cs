@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,11 @@ using SignalFlowBackend.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
@@ -85,8 +90,6 @@ builder.Services
     });
 
 var app = builder.Build();
-
-
 
 if (app.Environment.IsDevelopment())
 {

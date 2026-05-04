@@ -10,7 +10,8 @@ namespace SignalFlowBackend.Hub;
 public sealed class ChatHub(
     IConversationService conversationService,
     IMessageService messageService,
-    IConversationParticipantService conversationParticipantService) : Microsoft.AspNetCore.SignalR.Hub
+    IConversationParticipantService conversationParticipantService,
+    ActiveConnectionsTracker tracker) : Microsoft.AspNetCore.SignalR.Hub
 {
     private Guid UserId => Guid.Parse(
         Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -25,10 +26,11 @@ public sealed class ChatHub(
 
         var conversationDtos = conversationList.ToList();
 
-        var joinTasks = conversationDtos.Select(c =>
-            Groups.AddToGroupAsync(Context.ConnectionId, c.ConversationId.ToString()));
-
-        await Task.WhenAll(joinTasks);
+        foreach (var c in conversationDtos)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, c.ConversationId.ToString());
+            tracker.Add(c.ConversationId, Context.ConnectionId);
+        }
 
         Context.Items["Conversations"] = conversationDtos
             .Select(c => c.ConversationId)
@@ -39,15 +41,15 @@ public sealed class ChatHub(
 
     public async Task<bool> JoinConversation(Guid conversationId)
     {
-        var found = 
+        var found =
             await conversationParticipantService
                 .GetParticipantByUserIdAndConversationIdAsync(UserId, conversationId);
 
-        // not authorized
         if (found is null) return false;
 
         UserConversations.Add(conversationId);
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId.ToString());
+        tracker.Add(conversationId, Context.ConnectionId);
 
         return true;
     }
@@ -70,7 +72,15 @@ public sealed class ChatHub(
     public async Task ExitConversation(Guid conversationId)
     {
         UserConversations.Remove(conversationId);
-        await Groups
-            .RemoveFromGroupAsync(Context.ConnectionId, conversationId.ToString());
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, conversationId.ToString());
+        tracker.Remove(conversationId, Context.ConnectionId);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        foreach (var convId in UserConversations)
+            tracker.Remove(convId, Context.ConnectionId);
+
+        await base.OnDisconnectedAsync(exception);
     }
 }

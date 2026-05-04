@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Service;
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
+using SignalFlowBackend.Hub;
 
 namespace SignalFlowBackend.Controllers;
 
@@ -11,7 +13,8 @@ namespace SignalFlowBackend.Controllers;
 [Authorize]
 public class ConversationController(
     IConversationService conversationService,
-    IConversationParticipantService conversationParticipantService) : ControllerBase
+    IConversationParticipantService conversationParticipantService,
+    IHubContext<ChatHub> hubContext) : ControllerBase
 {
     private Guid? GetCurrentUserId()
     {
@@ -109,6 +112,15 @@ public class ConversationController(
         var created = await conversationService.CreateConversationAsync(request.Name, request.UserIds);
         if (created is null)
             return BadRequest("The conversation already exist or you haven't provided at least 2 valid user IDs");
+
+        foreach (var id in request.UserIds)
+        {
+            await hubContext
+                .Clients
+                .User(id.ToString())
+                .SendAsync("CreatedConversation", created.ConversationId);
+        }
+        
         return Ok(created);
     }
 

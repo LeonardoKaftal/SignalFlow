@@ -8,6 +8,23 @@ namespace SignalFlowBackend.Controllers;
 [Route("/api/[controller]")]
 public class UserController(IUserService userService): ControllerBase
 {
+
+   [HttpGet("{id:guid}")]
+   public async Task<ActionResult<PublicUserDto>> GetUserById(Guid id)
+   {
+      var found = await userService.FindByIdAsync(id);
+      if (found is null) return NotFound();
+      return new PublicUserDto(found.Id, found.Username);
+   }
+   
+   [HttpGet("{username}")]
+   public async Task<ActionResult<PublicUserDto>> GetUserById(string username)
+   {
+      var found = await userService.FindByUsernameAsync(username);
+      if (found is null) return NotFound();
+      return new PublicUserDto(found.Id, found.Username);
+   }
+   
    [HttpPost("register")]
    public async Task<ActionResult<LoginResponseDto>> RegisterUser([FromBody] UserRegisterRequestDto registerRequestDto)
    {

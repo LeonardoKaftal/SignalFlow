@@ -101,6 +101,16 @@ public class ConversationParticipantController(
         if (saved is null)
             return StatusCode(403, "Only admins can add participants or target user was not found");
 
+        await hubContext
+            .Clients
+            .Group(conversationId.ToString())
+            .SendAsync("ParticipantAdded", conversationId);
+        
+        // Tell the new user to join the SignalR group
+        await hubContext.Clients
+            .User(userId.ToString())
+            .SendAsync("JoinConversation", conversationId);
+        
         return CreatedAtAction(nameof(GetParticipantById), new { participantId = saved.ConversationParticipantId }, saved);
     }
 
@@ -115,12 +125,20 @@ public class ConversationParticipantController(
             participantId,
             conversationId,
             requesterParticipant.ConversationParticipantId);
+        
+        if (!promoted) 
+            return StatusCode(403, "Only admins can promote participants or participant was not found");
 
-        return promoted
-            ? NoContent()
-            : StatusCode(403, "Only admins can promote participants or participant was not found");
+        await hubContext
+            .Clients
+            .Group(conversationId.ToString())
+            .SendAsync("PromotedAdmin", participantId);
+        
+        return NoContent();
     }
-
+    
+    // not checking admin role here directly because someone which is not an admin could
+    // still use this endpoint for quitting
     [HttpDelete("/conversation/{conversationId:guid}/participant/{participantId:guid}")]
     public async Task<ActionResult> DeleteParticipant(Guid participantId, Guid conversationId)
     {
@@ -130,11 +148,14 @@ public class ConversationParticipantController(
 
         var deleted = await conversationParticipantService
             .DeleteParticipantAsync(participantId, conversationId, requesterParticipant.ConversationParticipantId);
-
-        if (!deleted) 
+        
+        if (deleted is null) 
+            return StatusCode(400, "You can't leave the conversation yet, " +
+                                   "you must nominate someone as admin before leaving" +
+                                   " or delete the whole conversation");
+        if ((bool) !deleted) 
             return StatusCode(403, "Only admins can remove participants or participant was not found");
 
-        
         await hubContext.Clients
             .Group(conversationId.ToString())
             .SendAsync("ParticipantRemoved", participantId);

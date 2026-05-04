@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SignalFlowBackend.Data;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Role;
 
 namespace SignalFlowBackend.Repository;
 
@@ -34,13 +35,31 @@ public class ConversationParticipantRepository(AppDbContext context)
             .FirstOrDefaultAsync();
     }
 
-    public async Task<IEnumerable<ConversationParticipantDto>> GetAllParticipantByConversationId(Guid conversationId)
+    public async Task<IEnumerable<ConversationParticipantDto>> GetAllParticipantsByConversationId(Guid conversationId)
     {
         return await context.Participants
             .AsNoTracking()
             .Where(p => p.ConversationId == conversationId)
             .Select(MapParticipantToDto)
             .ToListAsync();
+    }
+
+    // it can return null only if conversationId is the one of the global conversation, as there are no admin there
+    public async Task<List<ConversationParticipantDto>?> GetAllAdminsByConversationId(Guid conversationId)
+    {
+        return await context
+            .Participants
+            .AsNoTracking()
+            .Where(participant => participant.Role == ConversationParticipantRole.Admin && participant.ConversationId == conversationId)
+            .Select(MapParticipantToDto)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetNumberOfParticipantsByConversationId(Guid conversationId)
+    {
+        return await context
+                .Participants
+                .CountAsync(p => p.ConversationId == conversationId);
     }
 
     public async Task<ConversationParticipantDto> SaveAsync(ConversationParticipant participant)

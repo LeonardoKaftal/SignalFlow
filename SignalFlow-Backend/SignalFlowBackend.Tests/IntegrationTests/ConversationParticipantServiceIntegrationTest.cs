@@ -275,7 +275,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // when
-        var deleted = await service.DeleteParticipantAsync(participant.ConversationParticipantId, conversation.ConversationId);
+        var deleted = await service.DeleteParticipantAsync(participant.ConversationParticipantId, conversation.ConversationId, participant.ConversationParticipantId);
 
         // then
         deleted.Should().BeTrue();
@@ -294,7 +294,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
         var service = Services.GetRequiredService<IConversationParticipantService>();
 
         // when
-        var deleted = await service.DeleteParticipantAsync(Guid.NewGuid(), Guid.NewGuid());
+        var deleted = await service.DeleteParticipantAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         // then
         deleted.Should().BeFalse();
@@ -424,38 +424,27 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             Role = ConversationParticipantRole.Regular,
             LastAccess = DateTime.UtcNow
         };
-        var targetParticipant = new ConversationParticipant
-        {
-            ConversationParticipantId = Guid.NewGuid(),
-            UserId = targetUser.Id,
-            User = targetUser,
-            ConversationId = conversation.ConversationId,
-            ChatConversation = conversation,
-            Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
-        };
 
         await dbContext.Users.AddRangeAsync([requesterUser, targetUser], cancellationToken);
         await dbContext.Conversations.AddAsync(conversation, cancellationToken);
-        await dbContext.Participants.AddRangeAsync([requesterParticipant, targetParticipant], cancellationToken);
+        await dbContext.Participants.AddAsync(requesterParticipant, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // when
-        var promoted = await service.AddAdministratorToConversation(
-            targetParticipant.ConversationParticipantId,
+        var created = await service.SaveParticipantAsync(
+            targetUser.Id,
             conversation.ConversationId,
             requesterParticipant.ConversationParticipantId);
 
         // then
-        promoted.Should().BeFalse();
+        created.Should().BeNull();
 
-        var targetRole = await dbContext.Participants
+        var participants = await dbContext.Participants
             .AsNoTracking()
-            .Where(p => p.ConversationParticipantId == targetParticipant.ConversationParticipantId)
-            .Select(p => p.Role)
-            .FirstAsync(cancellationToken);
+            .Where(p => p.ConversationId == conversation.ConversationId)
+            .ToListAsync(cancellationToken);
 
-        targetRole.Should().Be(ConversationParticipantRole.Regular);
+        participants.Should().HaveCount(1);
     }
 
     [Fact]
@@ -514,5 +503,178 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
 
         targetRole.Should().Be(ConversationParticipantRole.Admin);
     }
-}
 
+    [Fact]
+    public async Task DeleteParticipantAsync_ShouldReturnFalse_WhenLastAdminAttemptsToLeaveWithOtherParticipants()
+    {
+        // given
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await Factory.ResetDatabaseAsync(cancellationToken);
+
+        var dbContext = Services.GetRequiredService<AppDbContext>();
+        var service = Services.GetRequiredService<IConversationParticipantService>();
+
+        var adminUser = BuildUser();
+        var regularUser = BuildUser();
+        var conversation = BuildConversation();
+        
+        var adminParticipant = new ConversationParticipant
+        {
+            ConversationParticipantId = Guid.NewGuid(),
+            UserId = adminUser.Id,
+            User = adminUser,
+            ConversationId = conversation.ConversationId,
+            ChatConversation = conversation,
+            Role = ConversationParticipantRole.Admin,
+            LastAccess = DateTime.UtcNow
+        };
+        
+        var regularParticipant = new ConversationParticipant
+        {
+            ConversationParticipantId = Guid.NewGuid(),
+            UserId = regularUser.Id,
+            User = regularUser,
+            ConversationId = conversation.ConversationId,
+            ChatConversation = conversation,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        };
+
+        await dbContext.Users.AddRangeAsync([adminUser, regularUser], cancellationToken);
+        await dbContext.Conversations.AddAsync(conversation, cancellationToken);
+        await dbContext.Participants.AddRangeAsync([adminParticipant, regularParticipant], cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // when
+        var deleted = await service.DeleteParticipantAsync(
+            adminParticipant.ConversationParticipantId,
+            conversation.ConversationId,
+            adminParticipant.ConversationParticipantId);
+
+        // then
+        deleted.Should().BeNull();
+
+        var found = await dbContext.Participants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ConversationParticipantId == adminParticipant.ConversationParticipantId, cancellationToken);
+
+        found.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task DeleteParticipantAsync_ShouldReturnTrue_WhenLastAdminLeavesAndIsTheOnlyParticipant()
+    {
+        // given
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await Factory.ResetDatabaseAsync(cancellationToken);
+
+        var dbContext = Services.GetRequiredService<AppDbContext>();
+        var service = Services.GetRequiredService<IConversationParticipantService>();
+
+        var adminUser = BuildUser();
+        var conversation = BuildConversation();
+        
+        var adminParticipant = new ConversationParticipant
+        {
+            ConversationParticipantId = Guid.NewGuid(),
+            UserId = adminUser.Id,
+            User = adminUser,
+            ConversationId = conversation.ConversationId,
+            ChatConversation = conversation,
+            Role = ConversationParticipantRole.Admin,
+            LastAccess = DateTime.UtcNow
+        };
+
+        await dbContext.Users.AddAsync(adminUser, cancellationToken);
+        await dbContext.Conversations.AddAsync(conversation, cancellationToken);
+        await dbContext.Participants.AddAsync(adminParticipant, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // when
+        var deleted = await service.DeleteParticipantAsync(
+            adminParticipant.ConversationParticipantId,
+            conversation.ConversationId,
+            adminParticipant.ConversationParticipantId);
+
+        // then
+        deleted.Should().BeTrue();
+
+        var found = await dbContext.Participants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ConversationParticipantId == adminParticipant.ConversationParticipantId, cancellationToken);
+
+        found.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteParticipantAsync_ShouldReturnFalse_WhenOtherAdminTriesToRemoveLastAdminWithOtherParticipants()
+    {
+        // given
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await Factory.ResetDatabaseAsync(cancellationToken);
+
+        var dbContext = Services.GetRequiredService<AppDbContext>();
+        var service = Services.GetRequiredService<IConversationParticipantService>();
+
+        var targetAdminUser = BuildUser();
+        var requesterAdminUser = BuildUser();
+        var regularUser = BuildUser();
+        var conversation = BuildConversation();
+        
+        var targetAdminParticipant = new ConversationParticipant
+        {
+            ConversationParticipantId = Guid.NewGuid(),
+            UserId = targetAdminUser.Id,
+            User = targetAdminUser,
+            ConversationId = conversation.ConversationId,
+            ChatConversation = conversation,
+            Role = ConversationParticipantRole.Admin,
+            LastAccess = DateTime.UtcNow
+        };
+
+        var requesterAdminParticipant = new ConversationParticipant
+        {
+            ConversationParticipantId = Guid.NewGuid(),
+            UserId = requesterAdminUser.Id,
+            User = requesterAdminUser,
+            ConversationId = conversation.ConversationId,
+            ChatConversation = conversation,
+            Role = ConversationParticipantRole.Admin,
+            LastAccess = DateTime.UtcNow
+        };
+        
+        var regularParticipant = new ConversationParticipant
+        {
+            ConversationParticipantId = Guid.NewGuid(),
+            UserId = regularUser.Id,
+            User = regularUser,
+            ConversationId = conversation.ConversationId,
+            ChatConversation = conversation,
+            Role = ConversationParticipantRole.Regular,
+            LastAccess = DateTime.UtcNow
+        };
+
+        await dbContext.Users.AddRangeAsync([targetAdminUser, requesterAdminUser, regularUser], cancellationToken);
+        await dbContext.Conversations.AddAsync(conversation, cancellationToken);
+        await dbContext.Participants.AddRangeAsync([targetAdminParticipant, requesterAdminParticipant, regularParticipant], cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Now remove the requesterAdminParticipant to make targetAdminParticipant the last admin
+        await dbContext.Participants.Where(p => p.ConversationParticipantId == requesterAdminParticipant.ConversationParticipantId).ExecuteDeleteAsync(cancellationToken);
+
+        // when - trying to remove the last admin while regular user still exists
+        var deleted = await service.DeleteParticipantAsync(
+            targetAdminParticipant.ConversationParticipantId,
+            conversation.ConversationId,
+            targetAdminParticipant.ConversationParticipantId);
+
+        // then
+        deleted.Should().BeNull();
+
+        var found = await dbContext.Participants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ConversationParticipantId == targetAdminParticipant.ConversationParticipantId, cancellationToken);
+
+        found.Should().NotBeNull();
+    }
+}

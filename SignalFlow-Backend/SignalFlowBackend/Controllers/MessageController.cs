@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Service;
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
+using SignalFlowBackend.Hub;
 
 namespace SignalFlowBackend.Controllers;
 
@@ -11,7 +13,8 @@ namespace SignalFlowBackend.Controllers;
 [Authorize]
 public class MessageController(
     IMessageService messageService,
-    IConversationParticipantService conversationParticipantService) : ControllerBase
+    IConversationParticipantService conversationParticipantService,
+    IHubContext<ChatHub> chatHub) : ControllerBase
 {
     private Guid? GetCurrentUserId()
     {
@@ -110,8 +113,7 @@ public class MessageController(
         return Ok(messages);
     }
     
-    // sending and receiving message is handled by SignalR hub, useful for testing
-    /*[HttpPost]
+    [HttpPost]
     public async Task<ActionResult<MessageDto>> SaveMessage([FromBody] MessageDto messageDto)
     {
         var currentUserId = GetCurrentUserId();
@@ -130,9 +132,14 @@ public class MessageController(
             return BadRequest("Invalid message payload: sender must be a conversation participant" +
                               " of the specified conversation.");
         }
+        
+        await chatHub
+            .Clients
+            .Group(saved.ConversationId.ToString())
+            .SendAsync("MessageReceived", saved);
 
         return CreatedAtAction(nameof(GetMessageById), new { messageId = saved.MessageId }, saved);
-    }*/
+    }
 
     [HttpPatch("{messageId:guid}")]
     public async Task<ActionResult<MessageDto>> UpdateMessage(Guid messageId, [FromBody] string newContent)

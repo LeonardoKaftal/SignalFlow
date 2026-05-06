@@ -139,10 +139,16 @@ public class ConversationController(
 
         var deleted = await conversationService
             .DeleteConversationAsync(conversationId, requesterParticipant.ConversationParticipantId);
-        
-        
-        
-        return deleted ? NoContent() : StatusCode(403, "Only admins can delete the conversation");
+
+        if (!deleted)
+            return StatusCode(403, "Only admins can delete the conversation");
+
+        await hubContext
+            .Clients
+            .Group(conversationId.ToString())
+            .SendAsync("ConversationDeleted", conversationId);
+
+        return NoContent();
     }
 }
 

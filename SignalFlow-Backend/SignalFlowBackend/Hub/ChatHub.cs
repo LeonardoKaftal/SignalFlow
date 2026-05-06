@@ -54,21 +54,6 @@ public sealed class ChatHub(
         return true;
     }
 
-    public async Task<bool> SendMessage(MessageDto message)
-    {
-        if (!UserConversations.Contains(message.ConversationId))
-            return false;
-
-        var saved = await messageService.SaveMessage(message);
-        if (saved is null) return false;
-
-        await Clients
-            .Group(message.ConversationId.ToString())
-            .SendAsync("MessageReceived", saved);
-
-        return true;
-    }
-
     public async Task ExitConversation(Guid conversationId)
     {
         UserConversations.Remove(conversationId);

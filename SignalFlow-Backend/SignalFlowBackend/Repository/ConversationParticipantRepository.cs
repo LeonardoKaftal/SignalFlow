@@ -17,6 +17,13 @@ public class ConversationParticipantRepository(AppDbContext context)
             .FindAsync(conversationParticipantId);
     }
 
+    public async Task<ConversationParticipant?> GetParticipantEntityByUserIdAndConversationIdAsync(Guid userId, Guid conversationId)
+    {
+        return await context
+            .Participants
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.ConversationId == conversationId);
+    }
+
     public async Task<ConversationParticipantDto?> GetParticipantByIdAsync(Guid conversationParticipantId)
     {
         return await context.Participants
@@ -26,7 +33,7 @@ public class ConversationParticipantRepository(AppDbContext context)
             .FirstOrDefaultAsync();
     }
 
-    public async Task<ConversationParticipantDto?> GetParticipantByUserIdAndConversationId(Guid userId, Guid conversationId)
+    public async Task<ConversationParticipantDto?> GetParticipantByUserIdAndConversationIdAsync(Guid userId, Guid conversationId)
     {
         return await context.Participants
             .AsNoTracking()
@@ -35,7 +42,16 @@ public class ConversationParticipantRepository(AppDbContext context)
             .FirstOrDefaultAsync();
     }
 
-    public async Task<IEnumerable<ConversationParticipantDto>> GetAllParticipantsByConversationId(Guid conversationId)
+    public async Task<IEnumerable<ConversationParticipant>> GetAllParticipantsEntityByConversationIdAsync(Guid conversationId)
+    {
+        return await context.Participants
+            .AsNoTracking()
+            .Include(participant => participant.User)
+            .Where(participant => participant.ConversationId == conversationId)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<ConversationParticipantDto>> GetAllParticipantsByConversationIdAsync(Guid conversationId)
     {
         return await context.Participants
             .AsNoTracking()
@@ -45,7 +61,7 @@ public class ConversationParticipantRepository(AppDbContext context)
     }
 
     // it can return null only if conversationId is the one of the global conversation, as there are no admin there
-    public async Task<List<ConversationParticipantDto>?> GetAllAdminsByConversationId(Guid conversationId)
+    public async Task<List<ConversationParticipantDto>?> GetAllAdminsByConversationIdAsync(Guid conversationId)
     {
         return await context
             .Participants
@@ -55,7 +71,7 @@ public class ConversationParticipantRepository(AppDbContext context)
             .ToListAsync();
     }
 
-    public async Task<int> GetNumberOfParticipantsByConversationId(Guid conversationId)
+    public async Task<int> GetNumberOfParticipantsByConversationIdAsync(Guid conversationId)
     {
         return await context
                 .Participants
@@ -90,6 +106,6 @@ public class ConversationParticipantRepository(AppDbContext context)
             ConversationParticipantId: p.ConversationParticipantId,
             Username: p.User.Username,
             Role: p.Role,
-            LastAccess: p.LastAccess
+            LastMessageRead: p.LastMessageRead
         );
 }

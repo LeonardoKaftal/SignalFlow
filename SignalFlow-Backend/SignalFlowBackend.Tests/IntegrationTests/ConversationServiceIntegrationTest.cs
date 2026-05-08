@@ -88,7 +88,7 @@ public class ConversationServiceIntegrationTest(IntegrationTestWebAppFactory fac
                 User = user,
                 ConversationId = conversationOne.ConversationId,
                 ChatConversation = conversationOne,
-                LastAccess = DateTime.UtcNow
+                LastMessageRead = null
             },
             new ConversationParticipant
             {
@@ -97,7 +97,7 @@ public class ConversationServiceIntegrationTest(IntegrationTestWebAppFactory fac
                 User = user,
                 ConversationId = conversationTwo.ConversationId,
                 ChatConversation = conversationTwo,
-                LastAccess = DateTime.UtcNow
+                LastMessageRead = null
             }
         ], cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -131,7 +131,7 @@ public class ConversationServiceIntegrationTest(IntegrationTestWebAppFactory fac
             User = user,
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);

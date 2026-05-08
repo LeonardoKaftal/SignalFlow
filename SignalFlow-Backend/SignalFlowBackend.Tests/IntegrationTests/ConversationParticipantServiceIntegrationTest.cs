@@ -60,7 +60,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             User = user,
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
@@ -73,7 +73,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
 
         // then
         result.Should().NotBeNull();
-        result!.ConversationParticipantId.Should().Be(participant.ConversationParticipantId);
+        result.ConversationParticipantId.Should().Be(participant.ConversationParticipantId);
         result.Username.Should().Be(user.Username);
     }
 
@@ -99,7 +99,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             User = user,
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         }, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -108,7 +108,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
 
         // then
         result.Should().NotBeNull();
-        result!.Username.Should().Be(user.Username);
+        result.Username.Should().Be(user.Username);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
                 User = userOne,
                 ConversationId = conversation.ConversationId,
                 ChatConversation = conversation,
-                LastAccess = DateTime.UtcNow
+                LastMessageRead = null
             },
             new ConversationParticipant
             {
@@ -144,7 +144,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
                 User = userTwo,
                 ConversationId = conversation.ConversationId,
                 ChatConversation = conversation,
-                LastAccess = DateTime.UtcNow
+                LastMessageRead = null
             }
         ], cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -179,7 +179,8 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
 
         // then
         result.Should().NotBeNull();
-        result!.Username.Should().Be(user.Username);
+        result.Username.Should().Be(user.Username);
+        result.LastMessageRead.Should().BeNull();
 
         var count = await dbContext.Participants.CountAsync(cancellationToken);
         count.Should().Be(1);
@@ -208,7 +209,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             User = user,
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         }, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -217,7 +218,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
 
         // then
         result.Should().NotBeNull();
-        result!.ConversationParticipantId.Should().Be(existingParticipantId);
+        result.ConversationParticipantId.Should().Be(existingParticipantId);
 
         var count = await dbContext.Participants.CountAsync(cancellationToken);
         count.Should().Be(1);
@@ -266,7 +267,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             User = user,
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
@@ -321,7 +322,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddRangeAsync([requesterUser, targetUser], cancellationToken);
@@ -367,7 +368,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
         var targetParticipant = new ConversationParticipant
         {
@@ -377,7 +378,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddRangeAsync([requesterUser, targetUser], cancellationToken);
@@ -422,7 +423,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddRangeAsync([requesterUser, targetUser], cancellationToken);
@@ -468,7 +469,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
         var targetParticipant = new ConversationParticipant
         {
@@ -478,7 +479,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddRangeAsync([requesterUser, targetUser], cancellationToken);
@@ -526,7 +527,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
         
         var regularParticipant = new ConversationParticipant
@@ -537,7 +538,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddRangeAsync([adminUser, regularUser], cancellationToken);
@@ -582,7 +583,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddAsync(adminUser, cancellationToken);
@@ -629,7 +630,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         var requesterAdminParticipant = new ConversationParticipant
@@ -640,7 +641,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
         
         var regularParticipant = new ConversationParticipant
@@ -651,7 +652,7 @@ public class ConversationParticipantServiceIntegrationTest(IntegrationTestWebApp
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         await dbContext.Users.AddRangeAsync([targetAdminUser, requesterAdminUser, regularUser], cancellationToken);

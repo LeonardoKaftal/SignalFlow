@@ -18,7 +18,7 @@ public class ConversationParticipantServiceTest
     {
         // given
         var participantId = Guid.NewGuid();
-        var expected = new ConversationParticipantDto(participantId, "alice", ConversationParticipantRole.Regular, DateTime.UtcNow);
+        var expected = new ConversationParticipantDto(participantId, "alice", ConversationParticipantRole.Regular, null);
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var conversationRepository = Substitute.For<IConversationRepository>();
@@ -40,15 +40,15 @@ public class ConversationParticipantServiceTest
         var conversationId = Guid.NewGuid();
         var expected = new List<ConversationParticipantDto>
         {
-            new(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, DateTime.UtcNow),
-            new(Guid.NewGuid(), "bob", ConversationParticipantRole.Regular, DateTime.UtcNow)
+            new(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, null),
+            new(Guid.NewGuid(), "bob", ConversationParticipantRole.Regular, null)
         };
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var conversationRepository = Substitute.For<IConversationRepository>();
         var sut = new ConversationParticipantService(repository, userRepository, conversationRepository);
 
-        repository.GetAllParticipantsByConversationId(conversationId).Returns(expected);
+        repository.GetAllParticipantsByConversationIdAsync(conversationId).Returns(expected);
 
         // when
         var actual = (await sut.GetAllParticipantsByConversationIdAsync(conversationId)).ToList();
@@ -63,13 +63,13 @@ public class ConversationParticipantServiceTest
         // given
         var userId = Guid.NewGuid();
         var conversationId = Guid.NewGuid();
-        var existingParticipant = new ConversationParticipantDto(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, DateTime.UtcNow);
+        var existingParticipant = new ConversationParticipantDto(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, null);
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var conversationRepository = Substitute.For<IConversationRepository>();
         var sut = new ConversationParticipantService(repository, userRepository, conversationRepository);
 
-        repository.GetParticipantByUserIdAndConversationId(userId, conversationId).Returns(existingParticipant);
+        repository.GetParticipantByUserIdAndConversationIdAsync(userId, conversationId).Returns(existingParticipant);
 
         // when
         var actual = await sut.SaveParticipantAsync(userId, conversationId);
@@ -91,7 +91,7 @@ public class ConversationParticipantServiceTest
         var conversationRepository = Substitute.For<IConversationRepository>();
         var sut = new ConversationParticipantService(repository, userRepository, conversationRepository);
 
-        repository.GetParticipantByUserIdAndConversationId(userId, conversationId).Returns((ConversationParticipantDto?)null);
+        repository.GetParticipantByUserIdAndConversationIdAsync(userId, conversationId).Returns((ConversationParticipantDto?)null);
         userRepository.FindUserEntityByIdAsync(userId).Returns((User?)null);
 
         // when
@@ -118,20 +118,18 @@ public class ConversationParticipantServiceTest
             RefreshTokenHash = "refresh-hash",
             RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
         };
-        var expected = new ConversationParticipantDto(Guid.NewGuid(), user.Username, ConversationParticipantRole.Regular, DateTime.UtcNow);
+        var expected = new ConversationParticipantDto(Guid.NewGuid(), user.Username, ConversationParticipantRole.Regular, null);
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var conversationRepository = Substitute.For<IConversationRepository>();
         var sut = new ConversationParticipantService(repository, userRepository, conversationRepository);
 
-        repository.GetParticipantByUserIdAndConversationId(userId, conversationId).Returns((ConversationParticipantDto?)null);
+        repository.GetParticipantByUserIdAndConversationIdAsync(userId, conversationId).Returns((ConversationParticipantDto?)null);
         userRepository.FindUserEntityByIdAsync(userId).Returns(user);
         repository.SaveAsync(Arg.Any<ConversationParticipant>()).Returns(expected);
-        var before = DateTime.UtcNow;
 
         // when
         var actual = await sut.SaveParticipantAsync(userId, conversationId);
-        var after = DateTime.UtcNow;
 
         // then
         actual.Should().Be(expected);
@@ -139,8 +137,7 @@ public class ConversationParticipantServiceTest
             participant.UserId == userId &&
             participant.User == user &&
             participant.ConversationId == conversationId &&
-            participant.LastAccess >= before &&
-            participant.LastAccess <= after));
+            participant.LastMessageRead == null));
     }
 
     [Fact]
@@ -154,7 +151,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = participantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
         var repository = Substitute.For<IConversationParticipantRepository>();
         var userRepository = Substitute.For<IUserRepository>();
@@ -171,9 +168,9 @@ public class ConversationParticipantServiceTest
             DateTime.UtcNow
         ));
 
-        repository.GetAllAdminsByConversationId(conversationId).Returns(new List<ConversationParticipantDto>
+        repository.GetAllAdminsByConversationIdAsync(conversationId).Returns(new List<ConversationParticipantDto>
         {
-            new(participantId, "alice", ConversationParticipantRole.Admin, participant.LastAccess)
+            new(participantId, "alice", ConversationParticipantRole.Admin, participant.LastMessageRead)
         });
 
         // when
@@ -222,7 +219,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = requesterParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         });
 
         // when
@@ -250,7 +247,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = targetParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         });
 
         repository.GetParticipantEntityByIdAsync(requesterParticipantId).Returns(new ConversationParticipant
@@ -258,7 +255,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = requesterParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         });
 
         // when
@@ -286,7 +283,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = targetParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         repository.GetParticipantEntityByIdAsync(targetParticipantId).Returns(target);
@@ -295,7 +292,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = requesterParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         });
 
         // when
@@ -324,7 +321,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = targetParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Regular,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         repository.GetParticipantEntityByIdAsync(targetParticipantId).Returns(target);
@@ -333,10 +330,10 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = requesterParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         });
         repository.SaveAsync(Arg.Any<ConversationParticipant>())
-            .Returns(new ConversationParticipantDto(targetParticipantId, "target", ConversationParticipantRole.Admin, DateTime.UtcNow));
+            .Returns(new ConversationParticipantDto(targetParticipantId, "target", ConversationParticipantRole.Admin, null));
 
         // when
         var actual = await sut.AddAdministratorToConversation(targetParticipantId, conversationId, requesterParticipantId);
@@ -363,7 +360,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = lastAdminParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         conversationRepository.GetConversationByIdAsync(conversationId).Returns(new ChatConversationDto(
@@ -373,11 +370,11 @@ public class ConversationParticipantServiceTest
             DateTime.UtcNow
         ));
         repository.GetParticipantEntityByIdAsync(lastAdminParticipantId).Returns(lastAdminParticipant);
-        repository.GetAllAdminsByConversationId(conversationId).Returns(new List<ConversationParticipantDto>
+        repository.GetAllAdminsByConversationIdAsync(conversationId).Returns(new List<ConversationParticipantDto>
         {
-            new(lastAdminParticipantId, "alice", ConversationParticipantRole.Admin, lastAdminParticipant.LastAccess)
+            new(lastAdminParticipantId, "alice", ConversationParticipantRole.Admin, lastAdminParticipant.LastMessageRead)
         });
-        repository.GetNumberOfParticipantsByConversationId(conversationId).Returns(2); // At least 2 participants
+        repository.GetNumberOfParticipantsByConversationIdAsync(conversationId).Returns(2); // At least 2 participants
 
         // when
         var actual = await sut.DeleteParticipantAsync(lastAdminParticipantId, conversationId, lastAdminParticipantId);
@@ -403,7 +400,7 @@ public class ConversationParticipantServiceTest
             ConversationParticipantId = lastAdminParticipantId,
             ConversationId = conversationId,
             Role = ConversationParticipantRole.Admin,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         conversationRepository.GetConversationByIdAsync(conversationId).Returns(new ChatConversationDto(
@@ -414,11 +411,11 @@ public class ConversationParticipantServiceTest
         ));
         conversationRepository.DeleteAsync(conversationId).Returns(true);
         repository.GetParticipantEntityByIdAsync(lastAdminParticipantId).Returns(lastAdminParticipant);
-        repository.GetAllAdminsByConversationId(conversationId).Returns(new List<ConversationParticipantDto>
+        repository.GetAllAdminsByConversationIdAsync(conversationId).Returns(new List<ConversationParticipantDto>
         {
-            new(lastAdminParticipantId, "alice", ConversationParticipantRole.Admin, lastAdminParticipant.LastAccess)
+            new(lastAdminParticipantId, "alice", ConversationParticipantRole.Admin, lastAdminParticipant.LastMessageRead)
         });
-        repository.GetNumberOfParticipantsByConversationId(conversationId).Returns(1); // Only 1 participant
+        repository.GetNumberOfParticipantsByConversationIdAsync(conversationId).Returns(1); // Only 1 participant
         repository.DeleteAsync(lastAdminParticipantId).Returns(true);
 
         // when

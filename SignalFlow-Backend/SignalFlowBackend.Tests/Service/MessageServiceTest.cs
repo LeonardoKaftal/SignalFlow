@@ -15,11 +15,11 @@ public class MessageServiceTest
 {
     private static MessageService BuildSut(
         IMessageRepository messageRepository,
-        IConversationParticipantRepository? participantRepository = null)
+        IConversationParticipantService? participantService = null)
     {
         return new MessageService(
             messageRepository,
-            participantRepository ?? Substitute.For<IConversationParticipantRepository>());
+            participantService ?? Substitute.For<IConversationParticipantService>());
     }
 
     private static ConversationParticipant BuildParticipantEntity(Guid participantId, Guid conversationId)
@@ -31,7 +31,7 @@ public class MessageServiceTest
             UserId = Guid.NewGuid(),
             User = null!,
             ChatConversation = null!,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
     }
 
@@ -70,7 +70,7 @@ public class MessageServiceTest
                 RefreshTokenHash = "refreshHash",
                 RefreshTokenExpiryTime = DateTime.Now.AddDays(7)
             },
-            LastAccess = DateTime.UtcNow
+                    LastMessageRead = null
         },
         SentTime = DateTime.UtcNow,
         Content  = "Hello!"
@@ -197,12 +197,14 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var participantRepository = Substitute.For<IConversationParticipantRepository>();
-        var sut = BuildSut(repository, participantRepository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
-        participantRepository
+        var participant = BuildParticipantEntity((Guid)SampleDto.SenderId!, SampleDto.ConversationId);
+
+        participantService
             .GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!)
-            .Returns(BuildParticipantEntity((Guid)SampleDto.SenderId!, SampleDto.ConversationId));
+            .Returns(participant);
 
         repository.Save(Arg.Any<Message>()).Returns(SampleDto);
 
@@ -212,6 +214,8 @@ public class MessageServiceTest
         // then
         actual.Should().NotBeNull();
         actual.Content.Should().Be(SampleDto.Content);
+        participant.LastMessageRead.Should().Be(SampleDto.MessageId);
+        await participantService.Received(1).UpdateParticipantAsync(participant);
     }
 
     [Fact]
@@ -219,12 +223,14 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var participantRepository = Substitute.For<IConversationParticipantRepository>();
-        var sut = BuildSut(repository, participantRepository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
-        participantRepository
+        var participant = BuildParticipantEntity((Guid)SampleDto.SenderId!, SampleDto.ConversationId);
+
+        participantService
             .GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!)
-            .Returns(BuildParticipantEntity((Guid)SampleDto.SenderId!, SampleDto.ConversationId));
+            .Returns(participant);
 
         repository.Save(Arg.Any<Message>()).Returns(SampleDto);
 
@@ -233,6 +239,7 @@ public class MessageServiceTest
 
         // then
         await repository.Received(1).Save(Arg.Any<Message>());
+        await participantService.Received(1).UpdateParticipantAsync(participant);
     }
 
     [Fact]
@@ -240,8 +247,8 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var participantRepository = Substitute.For<IConversationParticipantRepository>();
-        var sut = BuildSut(repository, participantRepository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
         var dtoWithEmptyId = SampleDto with { MessageId = Guid.Empty };
 
@@ -252,7 +259,7 @@ public class MessageServiceTest
                 return new MessageDto(msg.MessageId, msg.ConversationId, msg.SenderId, "alice", msg.SentTime, msg.Content);
             });
 
-        participantRepository
+        participantService
             .GetParticipantEntityByIdAsync((Guid)dtoWithEmptyId.SenderId!)
             .Returns(BuildParticipantEntity((Guid)dtoWithEmptyId.SenderId!, dtoWithEmptyId.ConversationId));
 
@@ -270,10 +277,10 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var participantRepository = Substitute.For<IConversationParticipantRepository>();
-        var sut = BuildSut(repository, participantRepository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
-        participantRepository.GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!).Returns((ConversationParticipant?)null);
+        participantService.GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!).Returns((ConversationParticipant?)null);
 
         // when
         var actual = await sut.SaveMessage(SampleDto);
@@ -281,6 +288,7 @@ public class MessageServiceTest
         // then
         actual.Should().BeNull();
         await repository.DidNotReceive().Save(Arg.Any<Message>());
+        await participantService.DidNotReceive().UpdateParticipantAsync(Arg.Any<ConversationParticipant>());
     }
 
     [Fact]
@@ -288,10 +296,10 @@ public class MessageServiceTest
     {
         // given
         var repository = Substitute.For<IMessageRepository>();
-        var participantRepository = Substitute.For<IConversationParticipantRepository>();
-        var sut = BuildSut(repository, participantRepository);
+        var participantService = Substitute.For<IConversationParticipantService>();
+        var sut = BuildSut(repository, participantService);
 
-        participantRepository
+        participantService
             .GetParticipantEntityByIdAsync((Guid)SampleDto.SenderId!)
             .Returns(BuildParticipantEntity((Guid)SampleDto.SenderId!, Guid.NewGuid()));
 
@@ -301,6 +309,7 @@ public class MessageServiceTest
         // then
         actual.Should().BeNull();
         await repository.DidNotReceive().Save(Arg.Any<Message>());
+        await participantService.DidNotReceive().UpdateParticipantAsync(Arg.Any<ConversationParticipant>());
     }
 
     // ── DeleteMessage ─────────────────────────────────────────────────────────

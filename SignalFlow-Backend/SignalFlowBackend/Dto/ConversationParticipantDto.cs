@@ -6,5 +6,5 @@ public record ConversationParticipantDto(
     Guid ConversationParticipantId,
     string Username,
     ConversationParticipantRole Role,
-    DateTime LastAccess  
+    Guid? LastMessageRead
 );

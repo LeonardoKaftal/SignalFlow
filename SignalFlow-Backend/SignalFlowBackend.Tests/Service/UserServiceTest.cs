@@ -55,7 +55,7 @@ public class UserServiceTest
         var participantService = Substitute.For<IConversationParticipantService>();
         participantService
             .SaveParticipantAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
-            .Returns(new ConversationParticipantDto(Guid.NewGuid(), "John", ConversationParticipantRole.Regular, DateTime.UtcNow));
+            .Returns(new ConversationParticipantDto(Guid.NewGuid(), "John", ConversationParticipantRole.Regular, null));
 
         var service = new UserService(passwordHasher, userRepository, tokenService, conversationService, participantService);
 

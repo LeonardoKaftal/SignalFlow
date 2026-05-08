@@ -23,13 +23,13 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DevPolicy", policy =>
+    options.AddPolicy("ProductionPolicy", policy =>
     {
         policy
-            .SetIsOriginAllowed(_ => true)
+            .WithOrigins("https://signalflow-chat.com", "https://www.signalflow-chat.com")
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); 
+            .AllowCredentials();
     });
 });
 
@@ -100,7 +100,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("DevPolicy");
+app.UseCors("ProductionPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();

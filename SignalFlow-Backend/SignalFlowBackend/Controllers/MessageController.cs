@@ -13,8 +13,8 @@ namespace SignalFlowBackend.Controllers;
 [Authorize]
 public class MessageController(
     IMessageService messageService,
-    IConversationParticipantService conversationParticipantService,
-    IHubContext<ChatHub> chatHub) : ControllerBase
+    IHubContext<ChatHub> chatHub,
+    IConversationParticipantService conversationParticipantService) : ControllerBase
 {
     private Guid? GetCurrentUserId()
     {
@@ -28,15 +28,13 @@ public class MessageController(
         var currentUserId = GetCurrentUserId();
         if (currentUserId is null)
             return Unauthorized();
-
+        
         var message = await messageService.GetMessageById(messageId);
-
         if (message is null)
             return NotFound();
-
+        
         var isParticipant = await conversationParticipantService
             .IsUserParticipantOfConversationAsync(currentUserId.Value, message.ConversationId);
-
         if (!isParticipant)
             return StatusCode(403, "You are not part of the conversation");
 
@@ -119,7 +117,8 @@ public class MessageController(
         var currentUserId = GetCurrentUserId();
         if (currentUserId is null)
             return Unauthorized();
-
+        var participants = await conversationParticipantService
+            .GetAllParticipantsByConversationIdAsync(messageDto.ConversationId);
         var isParticipant = await conversationParticipantService
             .IsUserParticipantOfConversationAsync(currentUserId.Value, messageDto.ConversationId);
 

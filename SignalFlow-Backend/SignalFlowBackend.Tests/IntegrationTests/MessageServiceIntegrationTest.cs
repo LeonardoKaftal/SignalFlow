@@ -50,7 +50,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
             User = user,
             ConversationId = conversation.ConversationId,
             ChatConversation = conversation,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
     }
 
@@ -80,7 +80,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
 
         // then
         result.Should().NotBeNull();
-        result!.ConversationId.Should().Be(conversation.ConversationId);
+        result.ConversationId.Should().Be(conversation.ConversationId);
         result.SenderId.Should().Be(participant.ConversationParticipantId);
         result.Content.Should().Be("Integration message");
 
@@ -88,6 +88,12 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.MessageId == result.MessageId, cancellationToken);
         saved.Should().NotBeNull();
+
+        var updatedParticipant = await dbContext.Participants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ConversationParticipantId == participant.ConversationParticipantId, cancellationToken);
+        updatedParticipant.Should().NotBeNull();
+        updatedParticipant.LastMessageRead.Should().Be(result.MessageId);
     }
 
     [Fact]
@@ -155,7 +161,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
 
         // then
         result.Should().NotBeNull();
-        result!.MessageId.Should().Be(message.MessageId);
+        result.MessageId.Should().Be(message.MessageId);
         result.Content.Should().Be("Hello");
     }
 
@@ -311,7 +317,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
 
         // then
         result.Should().NotBeNull();
-        result!.MessageId.Should().Be(latest.MessageId);
+        result.MessageId.Should().Be(latest.MessageId);
         result.Content.Should().Be("Recent");
     }
 
@@ -350,7 +356,7 @@ public class MessageServiceIntegrationTest(IntegrationTestWebAppFactory factory)
 
         // then
         result.Should().NotBeNull();
-        result!.Content.Should().Be("Updated");
+        result.Content.Should().Be("Updated");
     }
 
     [Fact]

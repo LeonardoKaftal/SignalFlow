@@ -6,6 +6,7 @@ namespace SignalFlowBackend.Service;
 public interface IConversationParticipantService
 {
     Task<ConversationParticipant?> GetParticipantEntityByIdAsync(Guid conversationParticipantId); 
+    Task<ConversationParticipant?> GetParticipantEntityByUserIdAndConversationIdAsync(Guid userId, Guid conversationId);
     Task<ConversationParticipantDto?> GetParticipantByIdAsync(Guid conversationParticipantId);
     Task<ConversationParticipantDto?> GetParticipantByUserIdAndConversationIdAsync(Guid userId, Guid conversationId);
     Task<bool> IsUserParticipantOfConversationAsync(Guid userId, Guid conversationId);
@@ -13,4 +14,5 @@ public interface IConversationParticipantService
     Task<ConversationParticipantDto?> SaveParticipantAsync(Guid userId, Guid conversationId, Guid? requesterParticipantId = null);
     Task<bool?> DeleteParticipantAsync(Guid conversationParticipantId, Guid conversationId, Guid requesterParticipantId);
     Task<bool> AddAdministratorToConversation(Guid adminParticipantId, Guid conversationId, Guid? requesterParticipantId = null);
+    Task UpdateParticipantAsync(ConversationParticipant conversationParticipant);
 }

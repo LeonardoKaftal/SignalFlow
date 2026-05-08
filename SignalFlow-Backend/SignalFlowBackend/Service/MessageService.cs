@@ -1,12 +1,13 @@
 using SignalFlowBackend.Dto;
 using SignalFlowBackend.Entity;
+using SignalFlowBackend.Exceptions;
 using SignalFlowBackend.Repository;
 
 namespace SignalFlowBackend.Service;
 
 public class MessageService(
     IMessageRepository messageRepository,
-    IConversationParticipantRepository conversationParticipantRepository) : IMessageService
+    IConversationParticipantService conversationParticipantService) : IMessageService
 {
     public async Task<IEnumerable<MessageDto>?> GetAllMessagesByConversationId(Guid conversationId)
     {
@@ -30,7 +31,8 @@ public class MessageService(
         if (toSave.ConversationId == Guid.Empty || toSave.SenderId is null || string.IsNullOrWhiteSpace(toSave.Content))
             return null;
 
-        var sender = await conversationParticipantRepository.GetParticipantEntityByIdAsync((Guid)toSave.SenderId);
+        var sender = await conversationParticipantService
+            .GetParticipantEntityByIdAsync((Guid)toSave.SenderId);
         if (sender is null || sender.ConversationId != toSave.ConversationId)
             return null;
 
@@ -42,7 +44,13 @@ public class MessageService(
             Content = toSave.Content.Trim()
         };
 
-        return await messageRepository.Save(message);
+        var saved = await messageRepository.Save(message);
+        if (saved is null) return null;
+
+        sender.LastMessageRead = saved.MessageId; 
+
+        await conversationParticipantService.UpdateParticipantAsync(sender);
+        return saved;
     }
 
     public async Task<bool> DeleteMessage(Guid messageId)

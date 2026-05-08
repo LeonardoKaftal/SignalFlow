@@ -25,7 +25,7 @@ public class ConversationServiceTest
         );
 
     private static readonly ConversationParticipantDto SampleParticipant =
-        new(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, DateTime.UtcNow);
+        new(Guid.NewGuid(), "alice", ConversationParticipantRole.Regular, null);
 
     // ── GetConversationByIdAsync ──────────────────────────────────────────────
 
@@ -320,7 +320,7 @@ public class ConversationServiceTest
         var sut = BuildSut(repository, participantService);
 
         participantService.GetAllParticipantsByConversationIdAsync(conversationId).Returns([
-            new ConversationParticipantDto(requesterParticipantId, "admin-user", ConversationParticipantRole.Admin, DateTime.UtcNow)
+            new ConversationParticipantDto(requesterParticipantId, "admin-user", ConversationParticipantRole.Admin, null)
         ]);
         repository.DeleteAsync(conversationId).Returns(true);
 
@@ -343,7 +343,7 @@ public class ConversationServiceTest
         var sut = BuildSut(repository, participantService);
 
         participantService.GetAllParticipantsByConversationIdAsync(conversationId).Returns([
-            new ConversationParticipantDto(requesterParticipantId, "regular-user", ConversationParticipantRole.Regular, DateTime.UtcNow)
+            new ConversationParticipantDto(requesterParticipantId, "regular-user", ConversationParticipantRole.Regular, null)
         ]);
 
         // when

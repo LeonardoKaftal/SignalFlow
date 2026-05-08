@@ -23,7 +23,14 @@ public class ConversationParticipantService(
 
     public async Task<ConversationParticipant?> GetParticipantEntityByIdAsync(Guid conversationParticipantId)
     {
-        return await conversationParticipantRepository.GetParticipantEntityByIdAsync(conversationParticipantId);
+        return await conversationParticipantRepository
+            .GetParticipantEntityByIdAsync(conversationParticipantId);
+    }
+
+    public Task<ConversationParticipant?> GetParticipantEntityByUserIdAndConversationIdAsync(Guid userId, Guid conversationId)
+    {
+        return conversationParticipantRepository.
+            GetParticipantEntityByUserIdAndConversationIdAsync(userId,conversationId);
     }
 
     public Task<ConversationParticipantDto?> GetParticipantByIdAsync(Guid conversationParticipantId)
@@ -33,21 +40,25 @@ public class ConversationParticipantService(
 
     public Task<ConversationParticipantDto?> GetParticipantByUserIdAndConversationIdAsync(Guid userId, Guid conversationId)
     {
-        return conversationParticipantRepository.GetParticipantByUserIdAndConversationId(userId, conversationId);
+        return conversationParticipantRepository
+            .GetParticipantByUserIdAndConversationIdAsync(userId, conversationId);
     }
 
     public async Task<bool> IsUserParticipantOfConversationAsync(Guid userId, Guid conversationId)
     {
-        return await conversationParticipantRepository.GetParticipantByUserIdAndConversationId(userId, conversationId)
+        return await conversationParticipantRepository.GetParticipantByUserIdAndConversationIdAsync(userId, conversationId)
             is not null;
     }
 
     public Task<IEnumerable<ConversationParticipantDto>> GetAllParticipantsByConversationIdAsync(Guid conversationId)
     {
-        return conversationParticipantRepository.GetAllParticipantsByConversationId(conversationId);
+        return conversationParticipantRepository.GetAllParticipantsByConversationIdAsync(conversationId);
     }
 
-    public async Task<ConversationParticipantDto?> SaveParticipantAsync(Guid userId, Guid conversationId, Guid? requesterParticipantId = null)
+    public async Task<ConversationParticipantDto?> SaveParticipantAsync(
+        Guid userId,
+        Guid conversationId,
+        Guid? requesterParticipantId = null)
     {
         if (requesterParticipantId is not null)
         {
@@ -57,7 +68,7 @@ public class ConversationParticipantService(
         }
 
         var existingParticipant = await conversationParticipantRepository
-            .GetParticipantByUserIdAndConversationId(userId, conversationId);
+            .GetParticipantByUserIdAndConversationIdAsync(userId, conversationId);
 
         if (existingParticipant is not null)
             return existingParticipant;
@@ -72,7 +83,7 @@ public class ConversationParticipantService(
             User = user,
             ConversationId = conversationId,
             ChatConversation = null!,
-            LastAccess = DateTime.UtcNow
+            LastMessageRead = null
         };
 
         return await conversationParticipantRepository.SaveAsync(participant);
@@ -102,14 +113,14 @@ public class ConversationParticipantService(
             return false;
 
         var admins = await conversationParticipantRepository
-            .GetAllAdminsByConversationId(conversationId);
+            .GetAllAdminsByConversationIdAsync(conversationId);
 
         var isRequesterAnAdmin = admins!
             .Any(admin => admin.ConversationParticipantId.Equals(requesterParticipantId));
         var isRemovedAnAdmin = admins!
             .Any(admin => admin.ConversationParticipantId.Equals(conversationParticipantId));
         var numberOfParticipants = await conversationParticipantRepository
-                .GetNumberOfParticipantsByConversationId(conversationId);
+                .GetNumberOfParticipantsByConversationIdAsync(conversationId);
         
         // The last admin cannot leave or be removed while other participants remain.
         // They must nominate another admin first.
@@ -154,6 +165,12 @@ public class ConversationParticipantService(
         await conversationParticipantRepository.SaveAsync(participantFound);
 
         return true;
+    }
+
+    public async Task UpdateParticipantAsync(ConversationParticipant conversationParticipant)
+    {
+        await conversationParticipantRepository
+            .SaveAsync(conversationParticipant);
     }
 }
 

@@ -116,7 +116,6 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AppPolicy");
 
 app.UseAuthentication();

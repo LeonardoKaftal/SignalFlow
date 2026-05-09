@@ -40,7 +40,7 @@ The application can be run entirely via Docker Compose. A `compose.yaml` file is
 Navigate to the `SignalFlowBackend/` folder and run:
 
 ```bash
-docker build -t signalflow-backend .
+sudo docker compose up .
 ```
 
 This will:

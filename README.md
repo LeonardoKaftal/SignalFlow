@@ -1,5 +1,7 @@
 # SignalFlow
 
+Try it out: https://www.signalflow-chat.com/
+
 this is the backend of SignalFlow, is a REST API + SignalR server for real-time chat communication.
 It provides user authentication, conversation management, message handling, participant management, and live updates over a SignalR hub.
 

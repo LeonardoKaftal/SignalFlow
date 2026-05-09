@@ -21,15 +21,32 @@ builder.Services
 
 builder.Services.AddOpenApi();
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("ProductionPolicy", policy =>
+    options.AddPolicy("AppPolicy", policy =>
     {
-        policy
-            .WithOrigins("https://signalflow-chat.com", "https://www.signalflow-chat.com")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        if (allowedOrigins == null || allowedOrigins.Length == 0)
+        {
+            // Fallback dev policy
+            policy
+                .SetIsOriginAllowed(_ => true)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else
+        {
+            // production
+            policy
+                .WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
     });
 });
 
@@ -100,7 +117,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("ProductionPolicy");
+app.UseCors("AppPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -109,4 +126,11 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 
 app.UseExceptionHandler();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
 app.Run();

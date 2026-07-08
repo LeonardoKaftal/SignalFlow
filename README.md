@@ -1,5 +1,7 @@
 # SignalFlow
 
+The login and registration processes can take longer than usual after a period of inactivity
+
 Try it out: https://www.signalflow-chat.com/
 
 this is the backend of SignalFlow, is a REST API + SignalR server for real-time chat communication.

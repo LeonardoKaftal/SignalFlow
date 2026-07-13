@@ -1,6 +1,6 @@
 # SignalFlow
 
-The login and registration processes can take longer than usual after a period of inactivity
+The login and registration processes can take longer than usual after a period of inactivity.
 All the credentials and tokens in the code are for dev environment only
 
 Try it out: https://www.signalflow-chat.com/
